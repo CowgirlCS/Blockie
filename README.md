@@ -21,17 +21,38 @@ No internet and no installing needed.
 - Get the level's points, beat the boss, then touch the red flag.
 - Food heals one heart and makes you fast for a bit.
 - Armor (helmet, chest plate, shield) blocks one hit each, then breaks.
-- Walk past an elephant to say hi. It gives you a gem!
-- Spend gems in the **Castle Shop** on upgrades.
+- Walk past a friendly animal to say hi. Each one gives you a present:
+  - **Elephant** and **sheep**: a gem
+  - **Pig**: a bunch of coins
+  - **Cow**: milk (+1 heart). You can ride on its back!
+  - **Horse**: makes you run fast. Ride it too!
+  - **Chicken**: lays an egg to eat
+- **Gems**: blue = 1, green emerald = 2, red ruby = 3, sparkly diamond = 5.
+  Spend them in the **Castle Shop** on upgrades.
+- **Dragons** fly around and breathe fire (ouch!) or ice (brrr, it slows you down).
+  Beat one and it drops a power orb.
+- The **Fire Wand** shoots fireballs that fly at the nearest monster. Great for dragons!
+- **Power orbs** give you an elemental power for 25 seconds:
+  - **Fire** (red): hits do extra damage
+  - **Ice** (blue): hits freeze monsters in a block of ice
+  - **Lightning** (yellow): hits zap a second monster too
+  - **Wind** (green): press ↑ again in the air for a double jump
+- **Potions**:
+  - **Heart** (red): +2 hearts
+  - **Jump** (blue): super high jumps
+  - **Star** (gold): nothing can hurt you, and monsters you touch get bonked
+  - **Magnet** (purple): coins and gems fly to you
+- Powers and potions show at the top left with a bar that runs down.
+  Losing a life takes them away.
 - Progress saves by itself in the browser.
 
 ## The levels
 
-1. **Blockie Meadow** - zombies, farms and elephants. Boss: Farmer Grumble
-2. **Mushroom Woods** - skeletons and mobs. Boss: Giant Spider
-3. **Spider Hollow** - a dark cave full of spiders. Boss: Spider Queen
-4. **Skeleton Ruins** - an old graveyard. Boss: Skeleton King
-5. **Castle of the Forest** - robots and everyone else. Boss: The Mob Lord
+1. **Blockie Meadow** - zombies and two farms full of animals. Find the Wind orb! Boss: Farmer Grumble
+2. **Mushroom Woods** - skeletons, mobs and your first dragon. Boss: Giant Spider
+3. **Spider Hollow** - a dark cave full of spiders. The Fire Wand is here! Boss: Spider Queen
+4. **Skeleton Ruins** - an old graveyard with fire and ice dragons. Boss: Skeleton King
+5. **Castle of the Forest** - robots, dragons and everyone else. Boss: The Mob Lord
 
 After levels 1 to 4 there is a bonus round (Gem Rain or Spider Chase).
 
@@ -40,7 +61,8 @@ After levels 1 to 4 there is a bonus round (Gem Rain or Spider Chase).
 Plain HTML, CSS and JavaScript. No libraries, no build step.
 
 - `js/levels.js` - the level maps (easy to edit: each level is a list of simple calls)
-- `js/entities.js` - Blockie, monsters, elephants
+- `js/items.js` - gems, potions and elemental powers (names, colors, how long they last)
+- `js/entities.js` - Blockie, monsters, dragons, the friendly animals
 - `js/bosses.js` - the five bosses
 - `js/world.js` - playing a level, the camera and the HUD
 - `js/screens.js` - menus, shop, win and game-over screens

@@ -29,7 +29,7 @@ class LevelBuilder {
     this.enemies = [];
     this.decos = [];
     this.checkpoints = [];
-    this.elephants = [];
+    this.animals = [];
     this.bossInfo = null;
     this.flagCol = null;
     this.spawnCol = 2;
@@ -94,9 +94,17 @@ class LevelBuilder {
     this.checkpoints.push({ c, r: GROUND });
   }
 
-  // A friendly elephant that walks between columns c1 and c2.
-  elephant(c1, c2) {
-    this.elephants.push({ c1, c2 });
+  // A friendly animal that walks between columns c1 and c2.
+  // type: elephant, sheep, pig, cow, horse or chicken
+  animal(type, c1, c2) {
+    this.animals.push({ type, c1, c2 });
+  }
+
+  elephant(c1, c2) { this.animal('elephant', c1, c2); }
+
+  // A flying dragon ('fire' or 'ice') that floats around column c.
+  dragon(c, el = 'fire') {
+    this.enemy('dragon', c, { el, r: 9.5 });
   }
 
   deco(type, c, r = GROUND, extra = {}) {
@@ -157,7 +165,7 @@ const LEVELS = [
       b.sign(19, '↑ = Jump');
       b.plat(21, 9, 4);
       b.item('gem', 22, 8);
-      b.item('gem', 23, 8);
+      b.item('emerald', 23, 8);
       b.enemy('zombie', 28);
       b.deco('tree', 31);
       b.item('apple', 33);
@@ -167,6 +175,9 @@ const LEVELS = [
       b.checkpoint(40);
       b.farm(44, 60);
       b.elephant(46, 58);
+      b.animal('sheep', 49, 57);
+      b.animal('chicken', 53, 60);
+      b.animal('pig', 59, 66);
       b.coins(49, 8, 3);
       b.item('apple', 52);
       b.item('bread', 57);
@@ -177,28 +188,35 @@ const LEVELS = [
       b.block(72, 11);
       b.block(73, 10, 1, 2);
       b.block(74, 9, 1, 3);
-      b.item('gem', 74, 8);
+      b.item('ruby', 74, 8);
       b.plat(77, 8, 4);
       b.coins(77, 7, 4);
       b.enemy('zombie', 80);
       b.deco('tree', 84);
       b.enemy('zombie', 88);
       b.checkpoint(91);
+      b.animal('horse', 93, 102);
       b.coins(95, 10, 4);
       b.enemy('zombie', 99);
+      b.item('windorb', 101);
 
       // gap at 103-105
       b.ground(106, 175);
       b.farm(108, 126);
       b.elephant(110, 124);
+      b.animal('cow', 112, 123);
+      b.animal('sheep', 115, 126);
       b.item('carrot', 114);
+      b.item('jumppot', 117);
       b.plat(118, 9, 4);
       b.item('gem', 119, 8);
-      b.item('gem', 120, 8);
+      b.item('diamond', 120, 8);
+      b.animal('chicken', 126, 134);
       b.enemy('zombie', 128);
       b.enemy('zombie', 132);
       b.checkpoint(136);
       b.item('apple', 139);
+      b.item('healpot', 140);
       b.boss('grumble', 141, 160);
       b.flag(171);
     }
@@ -215,6 +233,7 @@ const LEVELS = [
     width: 176,
     build(b) {
       b.ground(0, 30);
+      b.animal('sheep', 1, 12);
       b.item('spear', 6);
       b.sign(9, 'Spear: long poke!');
       b.mushroom(13, 9, 3);
@@ -222,12 +241,14 @@ const LEVELS = [
       b.enemy('zombie', 18);
       b.mushroom(21, 9, 3);
       b.mushroom(25, 7, 3);
-      b.item('gem', 26, 6);
+      b.item('emerald', 26, 6);
       b.enemy('skeleton', 29);
 
       // gap at 31-33
       b.ground(34, 62);
       b.checkpoint(35);
+      b.animal('chicken', 37, 41);
+      b.item('iceorb', 39);
       b.mob(42, 3);
       b.mushroom(46, 9, 4);
       b.coins(46, 8, 4);
@@ -235,13 +256,14 @@ const LEVELS = [
       b.mushroom(53, 9, 3);
       b.mushroom(56, 7, 3);
       b.item('gem', 57, 6);
-      b.item('gem', 58, 6);
+      b.item('ruby', 58, 6);
       b.enemy('skeleton', 61);
 
       // gap at 63-65 with a mushroom to hop on
       b.mushroom(63, 10, 3);
       b.ground(66, 100);
       b.enemy('zombie', 70);
+      b.item('jumppot', 72);
       b.mob(75, 4);
       b.checkpoint(81);
       b.item('axe', 86);
@@ -256,10 +278,12 @@ const LEVELS = [
       b.enemy('zombie', 107);
       b.mushroom(110, 9, 3);
       b.item('apple', 111, 8);
+      b.dragon(114);
       b.enemy('skeleton', 116);
       b.mob(120, 4);
       b.coins(125, 10, 4);
       b.checkpoint(130);
+      b.animal('horse', 123, 138);
       b.enemy('zombie', 135);
       b.item('carrot', 138);
       b.boss('bigspider', 141, 158);
@@ -288,6 +312,7 @@ const LEVELS = [
       b.enemy('spider', 23, { drop: true });
       b.deco('bigtree', 25);
       b.item('apple', 28);
+      b.item('magnetpot', 30);
 
       // gap at 31-33
       b.ground(34, 64);
@@ -304,10 +329,14 @@ const LEVELS = [
 
       // gap at 65-67
       b.ground(68, 104);
-      b.enemy('spider', 72);
-      b.mob(77, 4);
+      b.item('firewand', 70);
+      b.sign(73, 'Fire Wand: SPACE = fire!');
+      b.enemy('spider', 75);
+      b.mob(78, 4);
       b.checkpoint(83);
+      b.item('starpot', 86);
       b.item('chest', 88);
+      b.dragon(90, 'ice');
       b.enemy('spider', 93, { drop: true });
       b.enemy('spider', 97, { drop: true });
       b.plat(99, 9, 3);
@@ -316,12 +345,14 @@ const LEVELS = [
 
       // gap at 105-106
       b.ground(107, 175);
+      b.item('zaporb', 109);
       b.mob(112, 5);
       b.item('bread', 117);
+      b.dragon(119);
       b.enemy('spider', 121);
       b.plat(124, 9, 4);
       b.item('gem', 125, 8);
-      b.item('gem', 126, 8);
+      b.item('diamond', 126, 8);
       b.enemy('spider', 129, { drop: true });
       b.deco('web', 131, 2);
       b.checkpoint(134);
@@ -355,13 +386,15 @@ const LEVELS = [
       b.ground(32, 66);
       b.checkpoint(33);
       b.coins(36, 10, 3);
+      b.item('fireorb', 37);
+      b.dragon(39);
       b.enemy('skeleton', 40);
       b.plat(43, 9, 4);
       b.coins(43, 8, 4);
       b.enemy('zombie', 48);
       b.enemy('zombie', 52);
       b.item('apple', 55);
-      b.coins(57, 10, 2, 'gem');
+      b.coins(57, 10, 2, 'ruby');
       b.item('helmet', 60);
       b.enemy('skeleton', 64);
 
@@ -375,25 +408,30 @@ const LEVELS = [
       b.coins(78, 10, 3);
       b.enemy('skeleton', 81);
       b.checkpoint(84);
+      b.dragon(88, 'ice');
       b.enemy('zombie', 89);
       b.coins(91, 10, 3, 'gem');
       b.enemy('skeleton', 95);
       b.plat(97, 9, 3);
       b.item('gem', 98, 8);
+      b.item('healpot', 99);
       b.item('bread', 101);
       b.enemy('zombie', 102);
 
       // gap at 105-107
       b.ground(108, 175);
+      b.animal('horse', 108, 120);
       b.enemy('skeleton', 112);
       b.coins(114, 10, 3);
       b.enemy('zombie', 117);
       b.block(120, 10, 2, 2);
       b.item('gem', 120, 9);
       b.item('gem', 121, 9);
-      b.coins(123, 10, 2, 'gem');
+      b.coins(123, 10, 2, 'emerald');
+      b.dragon(124);
       b.enemy('skeleton', 126);
       b.coins(129, 10, 4);
+      b.item('starpot', 133);
       b.checkpoint(135);
       b.item('carrot', 138);
       b.boss('skelking', 141, 158);
@@ -416,35 +454,43 @@ const LEVELS = [
       b.item('axe', 5);
       b.enemy('zombie', 12);
       b.coins(14, 10, 3);
+      b.dragon(18);
       b.enemy('robot', 21);
 
       // moat at 27-29
       b.ground(30, 60, BR);
       b.checkpoint(31);
+      b.item('zaporb', 34);
       b.mob(38, 5);
       b.block(44, 10, 2, 2, BR);
       b.block(46, 8, 2, 4, BR);
       b.item('gem', 46, 7);
-      b.item('gem', 47, 7);
+      b.item('diamond', 47, 7);
       b.item('helmet', 51);
       b.enemy('skeleton', 54);
+      b.dragon(55, 'ice');
       b.enemy('spider', 58);
 
       // moat at 61-63
       b.ground(64, 100, BR);
+      b.animal('horse', 64, 76);
       b.enemy('robot', 68);
       b.item('spear', 71);
       b.item('apple', 73);
+      b.item('iceorb', 75);
       b.enemy('robot', 77);
       b.checkpoint(80);
       b.mob(84, 6);
+      b.item('starpot', 87);
       b.item('shield', 89);
       b.plat(91, 9, 4);
       b.coins(91, 8, 4);
+      b.dragon(95);
       b.enemy('skeleton', 97);
 
       // moat at 101-103
       b.ground(104, 140, BR);
+      b.item('firewand', 106);
       b.enemy('spider', 108, { drop: true });
       b.item('mace', 110);
       b.enemy('robot', 114);
@@ -454,16 +500,21 @@ const LEVELS = [
       b.item('chest', 125, 7);
       b.item('gem', 124, 7);
       b.enemy('zombie', 130);
+      b.dragon(128, 'ice');
       b.enemy('skeleton', 135);
+      b.item('healpot', 137);
       b.item('bread', 138);
 
       // moat at 141-143
       b.ground(144, 213, BR);
       b.checkpoint(145);
+      b.item('fireorb', 147);
       b.item('sword', 149);
       b.enemy('robot', 153);
       b.mob(158, 6);
+      b.dragon(161);
       b.enemy('skeleton', 164);
+      b.item('magnetpot', 165);
       b.coins(166, 10, 4, 'gem');
       b.checkpoint(172);
       b.item('apple', 175);

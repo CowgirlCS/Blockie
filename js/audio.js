@@ -86,6 +86,17 @@ const Sound = {
       case 'web': this.tone(500, 0.25, { type: 'sine', to: 200, vol: 0.12 }); break;
       case 'stomp': this.tone(90, 0.25, { type: 'sawtooth', to: 40, vol: 0.15 }); this.noise(0.2, { freq: 200, vol: 0.25 }); break;
       case 'splash': this.noise(0.4, { freq: 900, vol: 0.25 }); break;
+      case 'fireball': this.noise(0.18, { freq: 700, vol: 0.18 }); this.tone(300, 0.15, { type: 'sawtooth', to: 120, vol: 0.05 }); break;
+      case 'roar': this.tone(160, 0.45, { type: 'sawtooth', to: 70, vol: 0.07 }); this.noise(0.35, { freq: 400, vol: 0.1 }); break;
+      case 'zap': this.tone(1800, 0.12, { to: 300, vol: 0.06 }); this.noise(0.1, { freq: 5000, vol: 0.12 }); break;
+      case 'freeze': [1600, 2000, 2400].forEach((f, i) => this.tone(f, 0.1, { type: 'triangle', vol: 0.08, delay: i * 0.05 })); break;
+      case 'power': [392, 523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.12, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); break;
+      case 'potion': [300, 400, 500].forEach((f, i) => this.tone(f, 0.1, { type: 'sine', to: f * 2, vol: 0.15, delay: i * 0.08 })); break;
+      case 'sheep': [500, 460, 500, 460, 480].forEach((f, i) => this.tone(f, 0.07, { type: 'sawtooth', vol: 0.05, delay: i * 0.06 })); break;
+      case 'pig': this.tone(180, 0.1, { to: 140, vol: 0.08 }); this.tone(200, 0.12, { to: 150, vol: 0.08, delay: 0.15 }); break;
+      case 'cow': this.tone(200, 0.7, { type: 'sawtooth', to: 140, vol: 0.07 }); break;
+      case 'horse': [900, 1000, 850, 950, 700, 800, 500].forEach((f, i) => this.tone(f, 0.06, { type: 'sawtooth', vol: 0.04, delay: i * 0.05 })); break;
+      case 'chicken': this.tone(900, 0.05, { vol: 0.05 }); this.tone(1000, 0.05, { vol: 0.05, delay: 0.08 }); this.tone(1400, 0.12, { type: 'triangle', to: 900, vol: 0.06, delay: 0.16 }); break;
     }
   }
 };

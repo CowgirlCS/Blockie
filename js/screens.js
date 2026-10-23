@@ -126,6 +126,10 @@ class TitleScreen {
     drawBlockie(ctx, 190, 468, { facing: 1, walk: this.t * 200, weapon: 'sword', armor: { shield: true } });
     drawElephant(ctx, 780, 468, -1, this.t, false);
     drawZombie(ctx, 640, 468, -1, 1, this.t, false);
+    drawSheep(ctx, 330, 468, 1, this.t, false);
+    drawChicken(ctx, 420, 468, -1, this.t, false, Math.sin(this.t * 2) < -0.3);
+    drawPig(ctx, 530, 468, -1, this.t, false);
+    drawDragon(ctx, 110, 250 + Math.sin(this.t * 2) * 12, 1, 1.4, this.t, false, { el: 'fire' });
 
     const opts = this.options();
     drawMenu(ctx, opts.map((id) => this.label(id)), this.cursor, W / 2, 250);
@@ -639,5 +643,8 @@ class EndingScreen {
     const hop = Math.abs(Math.sin(this.t * 5)) * 30;
     drawBlockie(ctx, W / 2 - 60, 468 - hop, { facing: 1, weapon: Save.data.weapon, air: hop > 2, armor: { helmet: true, chest: true, shield: true } });
     drawElephant(ctx, W / 2 + 120, 468, -1, this.t, true);
+    drawHorse(ctx, 220, 468, 1, this.t, true);
+    drawChicken(ctx, W / 2 + 20, 468, 1, this.t, true);
+    drawCow(ctx, 790, 468, -1, this.t, true);
   }
 }

@@ -58,13 +58,15 @@ function drawHeart(ctx, x, y, s, full) {
   if (full) box(ctx, x + s, y + s, s, s, '#ff9a9a');
 }
 
-function drawGem(ctx, x, y, s = 1) {
+// kind is a key of GEMS: gem, emerald, ruby or diamond.
+function drawGem(ctx, x, y, s = 1, kind = 'gem') {
+  const [dark, mid, light] = GEMS[kind].colors;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  poly(ctx, '#1279a0', [0, -11, 10, -3, 0, 11, -10, -3]);
-  poly(ctx, '#3fd0f5', [0, -11, 10, -3, 0, 3, -10, -3]);
-  poly(ctx, '#a8f4ff', [0, -11, 4, -3, 0, 0, -4, -3]);
+  poly(ctx, dark, [0, -11, 10, -3, 0, 11, -10, -3]);
+  poly(ctx, mid, [0, -11, 10, -3, 0, 3, -10, -3]);
+  poly(ctx, light, [0, -11, 4, -3, 0, 0, -4, -3]);
   box(ctx, -5, -6, 3, 3, '#ffffff');
   ctx.restore();
 }
@@ -102,7 +104,92 @@ function drawFood(ctx, type, x, y, s = 1) {
     box(ctx, -5, -12, 3, 7, '#3fb53a');
     box(ctx, 0, -14, 3, 9, '#3fb53a');
     box(ctx, 4, -11, 3, 6, '#2f9a2c');
+  } else if (type === 'egg') {
+    box(ctx, -6, -9, 12, 18, '#fff6e0');
+    box(ctx, -8, -4, 16, 12, '#fff6e0');
+    box(ctx, -4, -6, 3, 5, '#ffffff');
+    box(ctx, 2, 3, 5, 4, '#e8d8b0');
   }
+  ctx.restore();
+}
+
+// A glowing magic orb. el is a key of ELEMENTS.
+function drawOrb(ctx, el, x, y, s = 1, t = 0) {
+  const [main, light, dark] = ELEMENTS[el].colors;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = main;
+  ctx.beginPath();
+  ctx.arc(0, 0, 18 + Math.sin(t * 6) * 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  box(ctx, -8, -12, 16, 24, dark);
+  box(ctx, -12, -8, 24, 16, dark);
+  box(ctx, -7, -10, 14, 20, main);
+  box(ctx, -10, -7, 20, 14, main);
+  box(ctx, -7, -8, 4, 4, light);
+  const sym = '#ffffff';
+  if (el === 'fire') {
+    poly(ctx, '#ffe14d', [-5, 7, 5, 7, 6, 1, 1, -8, 0, -2, -3, -5, -6, 1]);
+  } else if (el === 'ice') {
+    box(ctx, -1, -8, 2, 16, sym);
+    box(ctx, -8, -1, 16, 2, sym);
+    box(ctx, -5, -5, 3, 3, sym);
+    box(ctx, 2, -5, 3, 3, sym);
+    box(ctx, -5, 2, 3, 3, sym);
+    box(ctx, 2, 2, 3, 3, sym);
+  } else if (el === 'zap') {
+    poly(ctx, sym, [3, -9, -5, 1, 0, 1, -3, 9, 5, -2, 0, -2]);
+  } else {
+    box(ctx, -7, -5, 10, 2, sym);
+    box(ctx, 3, -7, 2, 3, sym);
+    box(ctx, -4, -1, 11, 2, sym);
+    box(ctx, -7, 3, 8, 2, sym);
+    box(ctx, 1, 5, 2, 2, sym);
+  }
+  ctx.restore();
+}
+
+// A potion bottle. kind is a key of POTIONS.
+function drawPotion(ctx, kind, x, y, s = 1) {
+  const col = POTIONS[kind].color;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  box(ctx, -4, -16, 8, 4, '#8a5a2b');
+  box(ctx, -3, -12, 6, 5, '#d8eef5');
+  box(ctx, -9, -8, 18, 18, '#d8eef5');
+  box(ctx, -11, -5, 22, 12, '#d8eef5');
+  box(ctx, -7, -4, 14, 12, col);
+  box(ctx, -9, -2, 18, 8, col);
+  box(ctx, -7, -6, 3, 7, 'rgba(255,255,255,0.8)');
+  if (kind === 'healpot') {
+    pixels(ctx, ['##.##', '#####', '.###.', '..#..'], -4, -1, 1.8, { '#': '#ffffff' });
+  } else if (kind === 'jumppot') {
+    poly(ctx, '#ffffff', [0, -3, 5, 2, 2, 2, 2, 6, -2, 6, -2, 2, -5, 2]);
+  } else if (kind === 'starpot') {
+    drawStar(ctx, 1, 2, 6, '#ffffff');
+  } else {
+    box(ctx, -4, -2, 3, 7, '#ffffff');
+    box(ctx, 2, -2, 3, 7, '#ffffff');
+    box(ctx, -4, 3, 9, 3, '#ffffff');
+  }
+  ctx.restore();
+}
+
+// A ball of dragon breath or a fire wand shot, drawn at (0, 0).
+function drawFireball(ctx, el, spin, s = 1) {
+  const [main, light, dark] = ELEMENTS[el || 'fire'].colors;
+  ctx.save();
+  ctx.rotate(spin);
+  ctx.scale(s, s);
+  box(ctx, -9, -6, 18, 12, dark);
+  box(ctx, -6, -9, 12, 18, dark);
+  box(ctx, -7, -4, 14, 8, main);
+  box(ctx, -4, -7, 8, 14, main);
+  box(ctx, -3, -3, 6, 6, light);
   ctx.restore();
 }
 
@@ -135,6 +222,13 @@ function drawWeapon(ctx, type) {
       box(ctx, -2, -37, 4, 5, '#5c666d');
       box(ctx, -13, -26, 5, 4, '#5c666d');
       box(ctx, 8, -26, 5, 4, '#5c666d');
+      break;
+    case 'firewand':
+      box(ctx, -2, -24, 4, 32, '#5a3416');
+      box(ctx, -2, -24, 2, 32, '#7a4a22');
+      box(ctx, -4, -28, 8, 5, '#ffcc22');
+      box(ctx, -5, -37, 10, 10, '#ff4a1f');
+      box(ctx, -3, -35, 4, 4, '#ffe14d');
       break;
   }
 }
@@ -185,7 +279,7 @@ function drawStar(ctx, x, y, r, color) {
 
 // ---------- Blockie ----------
 // x is his middle, y is where his feet touch the ground.
-// o: facing, walk, air, weapon, swing (0..1 or -1), armor, blocking, spin, boost, webbed
+// o: facing, walk, air, weapon, swing (0..1 or -1), armor, blocking, spin, boost, webbed, chilled
 function drawBlockie(ctx, x, y, o) {
   const a = o.armor || {};
   ctx.save();
@@ -249,6 +343,7 @@ function drawBlockie(ctx, x, y, o) {
   let ang = 0.35, hx = 8, hy = -16;
   if (sw >= 0) {
     if (weapon === 'spear') { ang = Math.PI / 2; hx = 4 + Math.sin(sw * Math.PI) * 24; hy = -18; }
+    else if (weapon === 'firewand') { ang = 1.35; hx = 10; hy = -20; }
     else if (weapon === 'none') { hx = 8 + Math.sin(sw * Math.PI) * 12; hy = -18; }
     else ang = -1.4 + sw * 3.3;
   } else if (weapon === 'spear') {
@@ -256,8 +351,8 @@ function drawBlockie(ctx, x, y, o) {
   }
   if (o.blocking) { ang = -0.5; hx = 0; }
 
-  if (sw >= 0 && sw < 0.85 && weapon !== 'spear' && weapon !== 'none') {
-    const len = { sword: 26, axe: 36, mace: 30 }[weapon];
+  const len = { sword: 26, axe: 36, mace: 30 }[weapon];   // swoosh size; spear, wand and fists have none
+  if (sw >= 0 && sw < 0.85 && len) {
     ctx.strokeStyle = 'rgba(255,255,255,0.55)';
     ctx.lineWidth = weapon === 'axe' ? 12 : 6;
     ctx.beginPath();
@@ -283,6 +378,10 @@ function drawBlockie(ctx, x, y, o) {
     ctx.moveTo(14, -36); ctx.lineTo(-14, -8);
     ctx.moveTo(-14, -22); ctx.lineTo(14, -22);
     ctx.stroke();
+  }
+  if (o.chilled) {
+    box(ctx, -12, -44, 24, 44, 'rgba(140,210,255,0.45)');
+    box(ctx, -12, -44, 24, 3, 'rgba(255,255,255,0.8)');
   }
   ctx.restore();
 }
@@ -441,6 +540,169 @@ function drawMob(ctx, x, y, dir, s, t, flash, o = {}) {
     box(ctx, 5, -29, 2, 2, '#ffcc22');
     box(ctx, -1, -26, 2, 2, '#d7262e');
   }
+  ctx.restore();
+}
+
+// Dragons fly. At s = 1 they are about 52 wide. o.el picks the colors: 'fire' or 'ice'.
+function drawDragon(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  const ice = o.el === 'ice';
+  const body = ice ? '#4aa8ff' : '#d7262e';
+  const dark = ice ? '#2a6ac0' : '#9a1414';
+  const belly = ice ? '#e0f6ff' : '#ffcc22';
+  const wing = ice ? '#9ad8ff' : '#ff7a3a';
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const flap = Math.sin(t * 9);
+  poly(ctx, c(dark), [-10, -26, 4, -26, -6, -46 - flap * 10, -24, -40 - flap * 12]);
+  box(ctx, -28, -20, 12, 6, c(body));
+  box(ctx, -34, -24, 8, 6, c(body));
+  poly(ctx, c(belly), [-42, -30, -33, -25, -34, -16]);
+  box(ctx, -12, -10, 6, 9, c(dark));
+  box(ctx, 4, -10, 6, 9, c(dark));
+  box(ctx, -18, -28, 32, 19, c(body));
+  box(ctx, -12, -15, 22, 6, c(belly));
+  for (let k = 0; k < 3; k++) box(ctx, -14 + k * 8, -32, 4, 4, c(belly));
+  box(ctx, 8, -36, 10, 14, c(body));
+  box(ctx, 12, -44, 20, 14, c(body));
+  box(ctx, 28, -40, 9, 10, c(body));
+  box(ctx, 34, -39, 2, 2, '#2a0a0a');
+  box(ctx, 15, -50, 3, 6, c(belly));
+  box(ctx, 22, -50, 3, 6, c(belly));
+  box(ctx, 19, -42, 6, 6, '#ffffff');
+  box(ctx, 22, -41, 3, 4, '#111111');
+  if (o.breath) {
+    box(ctx, 30, -32, 8, 3, '#2a0a0a');
+    box(ctx, 37, -35, 6, 6, ice ? '#ffffff' : '#ffe14d');
+  } else {
+    box(ctx, 26, -32, 10, 2, c(dark));
+  }
+  poly(ctx, c(wing), [-6, -26, 8, -26, 2, -50 - flap * 12, -18, -44 - flap * 14]);
+  ctx.restore();
+}
+
+// ---------- Friendly animals ----------
+// All take: x = middle, y = feet, dir = facing, t = time, happy = just said hi.
+
+// Four legs that take turns lifting. legs: list of [x, which pair].
+function animalLegs(ctx, legs, w, h, step, color, hoof) {
+  for (const [lx, k] of legs) {
+    const up = Math.max(0, step * k);
+    box(ctx, lx, -h, w, h - up, color);
+    if (hoof) box(ctx, lx, -3 - up, w, 3, hoof);
+  }
+}
+
+function drawSheep(ctx, x, y, dir, t, happy) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir, 1);
+  animalLegs(ctx, [[-16, 1], [-8, -1], [6, 1], [13, -1]], 5, 11, Math.sin(t * 6) * 2, '#3a3a40');
+  box(ctx, -21, -28, 38, 18, '#f4f4ee');
+  box(ctx, -18, -34, 12, 8, '#f4f4ee');
+  box(ctx, -4, -34, 14, 8, '#f4f4ee');
+  box(ctx, -23, -24, 4, 10, '#f4f4ee');
+  box(ctx, -16, -33, 24, 3, '#ffffff');
+  box(ctx, -12, -20, 6, 4, '#e2e2da');
+  box(ctx, 2, -16, 6, 4, '#e2e2da');
+  box(ctx, 13, -30, 12, 15, '#3a3a40');
+  box(ctx, 10, -29, 5, 4, '#2a2a30');
+  box(ctx, 12, -33, 10, 5, '#f4f4ee');
+  if (happy) box(ctx, 18, -25, 5, 1.5, '#ffffff');
+  else box(ctx, 19, -26, 3, 3, '#ffffff');
+  box(ctx, 21, -19, 3, 1.5, '#ff9ab8');
+  ctx.restore();
+}
+
+function drawPig(ctx, x, y, dir, t, happy) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir, 1);
+  const pink = '#ff9ab8', dark = '#e07a98';
+  animalLegs(ctx, [[-17, 1], [-9, -1], [6, 1], [13, -1]], 5, 9, Math.sin(t * 7) * 2, dark);
+  box(ctx, -20, -27, 37, 19, pink);
+  box(ctx, -20, -27, 37, 3, '#ffc0d4');
+  box(ctx, -24, -24, 4, 3, dark);
+  box(ctx, -26, -28, 3, 4, dark);
+  box(ctx, 11, -30, 14, 17, pink);
+  box(ctx, 12, -34, 5, 5, dark);
+  box(ctx, 23, -24, 7, 8, '#ff7aa0');
+  box(ctx, 25, -22, 1.5, 3, '#a03050');
+  box(ctx, 28, -22, 1.5, 3, '#a03050');
+  if (happy) box(ctx, 16, -27, 5, 1.5, '#222222');
+  else box(ctx, 17, -28, 3, 3, '#222222');
+  ctx.restore();
+}
+
+function drawCow(ctx, x, y, dir, t, happy) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir, 1);
+  const white = '#f6f6f2', spot = '#2a2a2a';
+  animalLegs(ctx, [[-31, 1], [-20, -1], [12, 1], [23, -1]], 7, 16, Math.sin(t * 4) * 3, white, spot);
+  box(ctx, -38, -46, 3, 22, white);
+  box(ctx, -39, -26, 5, 5, spot);
+  box(ctx, -35, -50, 63, 35, white);
+  box(ctx, -35, -50, 63, 3, '#ffffff');
+  box(ctx, -27, -45, 15, 12, spot);
+  box(ctx, -4, -32, 13, 11, spot);
+  box(ctx, 12, -47, 10, 8, spot);
+  box(ctx, -6, -18, 12, 4, '#ffb0c0');
+  box(ctx, 24, -58, 19, 24, white);
+  box(ctx, 34, -42, 13, 11, '#ffb0c0');
+  box(ctx, 38, -38, 2, 2, '#a05060');
+  box(ctx, 43, -38, 2, 2, '#a05060');
+  box(ctx, 25, -62, 3, 5, '#e8dcb0');
+  box(ctx, 37, -62, 3, 5, '#e8dcb0');
+  box(ctx, 20, -54, 5, 4, spot);
+  if (happy) box(ctx, 33, -50, 6, 1.5, '#222222');
+  else box(ctx, 34, -51, 4, 4, '#222222');
+  ctx.restore();
+}
+
+function drawHorse(ctx, x, y, dir, t, happy) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir, 1);
+  const coat = '#b0703a', dark = '#7a4a22', mane = '#3a2010';
+  animalLegs(ctx, [[-27, 1], [10, 1]], 7, 30, Math.sin(t * 9) * 5, dark, '#2a2020');
+  animalLegs(ctx, [[-17, -1], [20, -1]], 7, 30, Math.sin(t * 9) * 5, coat, '#2a2020');
+  box(ctx, -38, -50, 6, 26, mane);
+  box(ctx, -32, -52, 60, 24, coat);
+  box(ctx, -32, -52, 60, 3, '#c88a50');
+  box(ctx, -14, -56, 24, 8, '#d7262e');
+  box(ctx, -14, -56, 24, 2, '#ff5a4f');
+  box(ctx, -4, -48, 4, 12, '#ffcc22');
+  box(ctx, 18, -72, 13, 26, coat);
+  box(ctx, 20, -80, 24, 14, coat);
+  box(ctx, 36, -74, 10, 9, dark);
+  box(ctx, 42, -71, 2, 2, '#1a1010');
+  box(ctx, 20, -86, 4, 6, coat);
+  box(ctx, 14, -80, 6, 30, mane);
+  if (happy) box(ctx, 28, -77, 5, 1.5, '#1a1010');
+  else box(ctx, 29, -78, 3, 3, '#1a1010');
+  ctx.restore();
+}
+
+// peck = head down, looking for seeds
+function drawChicken(ctx, x, y, dir, t, happy, peck) {
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir, 1);
+  const step = peck ? 0 : Math.sin(t * 14) * 1.5;
+  box(ctx, -4 + step, -6, 2, 6, '#ffa020');
+  box(ctx, 2 - step, -6, 2, 6, '#ffa020');
+  box(ctx, -12, -22, 5, 8, '#ffffff');
+  box(ctx, -10, -18, 17, 12, '#ffffff');
+  box(ctx, -7, -15, 9, 6, '#e6e6e6');
+  const hy = peck ? 8 : 0;
+  box(ctx, 3, -25 + hy, 8, 9, '#ffffff');
+  box(ctx, 4, -28 + hy, 5, 3, '#e8202a');
+  box(ctx, 11, -22 + hy, 4, 2, '#ffa020');
+  box(ctx, 9, -18 + hy, 2, 3, '#e8202a');
+  if (happy) box(ctx, 6, -22 + hy, 3, 1, '#222222');
+  else box(ctx, 7, -23 + hy, 2, 2, '#222222');
   ctx.restore();
 }
 

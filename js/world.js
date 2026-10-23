@@ -1,7 +1,7 @@
 // A World is one level (or bonus round) being played:
 // the map, Blockie, monsters, items, the camera, and the HUD.
 
-const FOOD = ['apple', 'bread', 'carrot'];
+const FOOD = ['apple', 'bread', 'carrot', 'egg'];
 const ARMOR = ['helmet', 'chest', 'shield'];
 
 const PICKUP_TEXT = {
@@ -9,6 +9,7 @@ const PICKUP_TEXT = {
   spear: 'Spear! It pokes far',
   axe: 'Battle Axe! Big hits',
   mace: 'Mace! Bonk them back',
+  firewand: 'Fire Wand! SPACE shoots fire',
   helmet: 'Helmet! Blocks 1 hit',
   chest: 'Chest Plate! Blocks 1 hit',
   shield: 'Shield! Hold ↓ to block'
@@ -32,10 +33,12 @@ class World {
       type: i.type, x: (i.c + 0.5) * T, y: (i.r + 0.5) * T, phase: Math.random() * 6, taken: false
     }));
     this.checkpoints = b.checkpoints.map((cp) => ({ c: cp.c, x: (cp.c + 1) * T, y: cp.r * T, on: false }));
-    this.elephants = b.elephants.map((e) => new Elephant(this, e.c1, e.c2));
+    this.animals = b.animals.map((a) => new Animal(this, a.type, a.c1, a.c2));
     this.enemies = b.enemies.map((e) => makeEnemy(this, e));
     this.newEnemies = [];
-    this.projectiles = [];
+    this.projectiles = [];   // things monsters throw at Blockie
+    this.shots = [];         // Blockie's fireballs
+    this.bolts = [];         // lightning flashes
     this.particles = [];
     this.popups = [];
 
@@ -110,12 +113,26 @@ class World {
     }
   }
 
-  addGem(x, y) {
-    Save.data.gems++;
+  // n = how many gems it is worth (a ruby is worth 3)
+  addGem(x, y, n = 1, kind = 'gem') {
+    Save.data.gems += n;
     Save.write();
-    this.gemsGot++;
-    this.sparkle(x, y, '#5fe6ff');
-    this.addPoints(5, x, y);
+    this.gemsGot += n;
+    this.sparkle(x, y, GEMS[kind].colors[1]);
+    this.addPoints(5 * n, x, y);
+    if (n > 1) this.popup(`+${n} gems!`, x, y - 26, '#bff6ff');
+  }
+
+  // Get hearts back. In bonus rounds there are no hearts, so just say yum.
+  heal(n, text = 'Yum!') {
+    const p = this.player;
+    if (this.lives < this.maxLives && this.mode === 'level') {
+      const got = Math.min(n, this.maxLives - this.lives);
+      this.lives += got;
+      this.popup(`+${got} ♥`, p.cx, p.y - 30, '#ff8a8a');
+    } else {
+      this.popup(text, p.cx, p.y - 30, '#ffffff');
+    }
   }
 
   popup(text, x, y, color = '#ffffff') {
@@ -159,6 +176,7 @@ class World {
     this.player.respawn(this.spawn.x, this.spawn.y);
     this.player.invuln = 2;
     this.projectiles = [];
+    this.shots = [];
     if (this.boss && !this.boss.dead) {
       this.bossActive = false;
       this.camMin = 0;
@@ -191,7 +209,7 @@ class World {
     if (this.needT > 0) this.needT -= dt;
     const p = this.player;
 
-    for (const el of this.elephants) el.update(dt);
+    for (const a of this.animals) a.update(dt);
     p.update(dt);
     if (this.done) return;
 
@@ -217,6 +235,7 @@ class World {
     this.enemies = this.enemies.filter((e) => !e.dead);
 
     this.updateProjectiles(dt);
+    this.updateShots(dt);
     this.updateItems(dt);
     this.updateCheckpoints();
     this.updateFlag(dt);
@@ -232,6 +251,8 @@ class World {
     this.particles = this.particles.filter((pt) => pt.life > 0);
     for (const pop of this.popups) pop.t += dt;
     this.popups = this.popups.filter((pop) => pop.t < 1.2);
+    for (const b of this.bolts) b.t -= dt;
+    this.bolts = this.bolts.filter((b) => b.t > 0);
 
     this.camX += (this.cameraTarget() - this.camX) * Math.min(1, dt * 7);
 
@@ -261,14 +282,21 @@ class World {
       if (isSolid(t) || (pr.kind === 'web' && isOneWay(t))) {
         pr.gone = true;
         if (pr.kind === 'web') this.burst(pr.x + pr.w / 2, pr.y + pr.h / 2, 6, ['#ffffff'], 80, 5, 0, 0.4);
+        if (pr.kind === 'breath') this.burst(pr.x + pr.w / 2, pr.y + pr.h / 2, 6, ELEMENTS[pr.el].colors, 100, 5, 0, 0.4);
       }
       if (pr.life <= 0 || pr.y > ROWS * T) pr.gone = true;
       if (pr.gone || p.dead || !overlap(pr, p)) continue;
 
-      if (pr.kind === 'web') {
+      if (p.star > 0) {
+        // Star Potion: nothing can hurt Blockie
+        pr.gone = true;
+        this.sparkle(pr.x + pr.w / 2, pr.y + pr.h / 2, '#ffe14d');
+      } else if (pr.kind === 'web' || (pr.kind === 'breath' && pr.el === 'ice')) {
         const fromFront = (pr.x + pr.w / 2 - p.cx) * p.facing > 0;
         if (p.blocking && fromFront) {
           Sound.play('block');
+        } else if (pr.kind === 'breath') {
+          p.chill();
         } else if (p.invuln <= 0) {
           p.webbed = 2;
           Sound.play('web');
@@ -280,6 +308,42 @@ class World {
       }
     }
     this.projectiles = this.projectiles.filter((pr) => !pr.gone);
+  }
+
+  // Fireballs from the fire wand
+  updateShots(dt) {
+    const p = this.player;
+    for (const s of this.shots) {
+      s.life -= dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.spin += dt * 14;
+      const mx = s.x + s.w / 2, my = s.y + s.h / 2;
+      const colors = ELEMENTS[s.el || 'fire'].colors;
+      if (Math.random() < 0.6) this.burst(mx, my, 1, colors, 40, 5, 0, 0.3);
+      if (s.life <= 0 || isSolid(this.tile(Math.floor(mx / T), Math.floor(my / T)))) {
+        s.gone = true;
+        this.burst(mx, my, 6, colors, 100, 5, 0, 0.4);
+        continue;
+      }
+      for (const e of this.enemies) {
+        if (!e.dead && overlap(s, e)) {
+          p.strike(e, s.dmg, s.dir, s.kb, s.el);
+          this.burst(mx, my, 8, colors, 140, 6, 0, 0.4);
+          s.gone = true;
+          break;
+        }
+      }
+      // Fireballs knock bones, webs and dragon breath out of the air
+      for (const pr of this.projectiles) {
+        if (s.gone || pr.gone || !overlap(s, pr)) continue;
+        pr.gone = true;
+        s.gone = true;
+        this.burst(mx, my, 8, colors, 140, 6, 0, 0.4);
+        this.addPoints(1, mx, my);
+      }
+    }
+    this.shots = this.shots.filter((s) => !s.gone);
   }
 
   updateItems(dt) {
@@ -296,6 +360,18 @@ class World {
         }
       }
       if (p.dead) continue;
+      // Magnet Potion: coins and gems fly to Blockie
+      if (p.magnet > 0 && (it.type === 'coin' || GEMS[it.type])) {
+        const dx = p.cx - it.x, dy = p.cy - it.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 300 && d > 1) {
+          const step = Math.min(d, 480 * dt);
+          it.x += dx / d * step;
+          it.y += dy / d * step;
+          it.landed = false;
+          it.fall = false;
+        }
+      }
       const touching = p.x < it.x + 14 && p.x + p.w > it.x - 14 && p.y < it.y + 14 && p.y + p.h > it.y - 14;
       if (it.waitLeave) {
         if (!touching) it.waitLeave = false;
@@ -314,20 +390,34 @@ class World {
       Sound.play('coin');
       this.sparkle(it.x, it.y, '#ffcc22');
       this.addPoints(1, it.x, it.y);
-    } else if (type === 'gem') {
+    } else if (GEMS[type]) {
       it.taken = true;
       Sound.play('gem');
-      this.addGem(it.x, it.y);
+      this.addGem(it.x, it.y, GEMS[type].value, type);
     } else if (FOOD.includes(type)) {
       it.taken = true;
       Sound.play('food');
       p.boost = 5;
-      if (this.lives < this.maxLives && this.mode === 'level') {
-        this.lives++;
-        this.popup('+1 ♥', p.cx, p.y - 30, '#ff8a8a');
-      } else {
-        this.popup('Yum!', p.cx, p.y - 30, '#ffffff');
-      }
+      this.heal(1);
+      this.addPoints(3, it.x, it.y);
+    } else if (orbElement(type)) {
+      const el = orbElement(type);
+      it.taken = true;
+      p.givePower(el);
+      Sound.play('power');
+      this.say(ELEMENTS[el].tip);
+      this.burst(p.cx, p.cy, 16, ELEMENTS[el].colors, 220, 7, 0, 0.6);
+      this.addPoints(3, it.x, it.y);
+    } else if (POTIONS[type]) {
+      it.taken = true;
+      Sound.play('potion');
+      this.say(POTIONS[type].tip);
+      const time = POTIONS[type].time;
+      if (type === 'healpot') this.heal(2, 'Glug glug!');
+      else if (type === 'jumppot') p.superJump = time;
+      else if (type === 'starpot') p.star = time;
+      else if (type === 'magnetpot') p.magnet = time;
+      this.burst(p.cx, p.cy, 14, [POTIONS[type].color, '#ffffff'], 200, 6, 0, 0.6);
       this.addPoints(3, it.x, it.y);
     } else if (WEAPONS[type]) {
       const old = p.weapon;
@@ -394,7 +484,8 @@ class World {
     if (this.spawnT <= 0 && this.timer > 0.5) {
       this.spawnT = 0.28;
       const r = Math.random();
-      const type = r < 0.5 ? 'gem' : r < 0.85 ? 'coin' : FOOD[Math.floor(Math.random() * 3)];
+      const type = r < 0.4 ? 'gem' : r < 0.5 ? 'emerald' : r < 0.55 ? 'ruby' : r < 0.57 ? 'diamond'
+        : r < 0.87 ? 'coin' : FOOD[Math.floor(Math.random() * FOOD.length)];
       this.items.push({
         type, x: 40 + Math.random() * (W - 80), y: -20, phase: Math.random() * 6,
         fall: true, vy: 90 + Math.random() * 90, life: 2.5, taken: false
@@ -457,15 +548,32 @@ class World {
     for (const it of this.items) {
       if (!it.taken && it.x > viewL && it.x < viewR) this.drawItem(ctx, it);
     }
-    for (const el of this.elephants) el.draw(ctx);
+    for (const a of this.animals) {
+      if (a.x + a.w > viewL && a.x < viewR) a.draw(ctx);
+    }
     for (const e of this.enemies) {
-      if (e.x + e.w > viewL && e.x < viewR) e.draw(ctx);
+      if (e.x + e.w > viewL && e.x < viewR) {
+        e.draw(ctx);
+        if (e.frozen > 0) {
+          // a block of ice
+          box(ctx, e.x - 4, e.y - 6, e.w + 8, e.h + 6, 'rgba(150,220,255,0.5)');
+          box(ctx, e.x - 4, e.y - 6, e.w + 8, 4, 'rgba(255,255,255,0.8)');
+          box(ctx, e.x, e.y, 4, e.h * 0.6, 'rgba(255,255,255,0.6)');
+        }
+      }
     }
     this.player.draw(ctx);
     for (const ch of this.chasers) {
       drawSpider(ctx, ch.x + ch.w / 2, ch.y + ch.h, 1, 0.42, this.time * 1.6, false);
     }
     for (const pr of this.projectiles) this.drawProjectile(ctx, pr);
+    for (const s of this.shots) {
+      ctx.save();
+      ctx.translate(s.x + s.w / 2, s.y + s.h / 2);
+      drawFireball(ctx, s.el, s.spin);
+      ctx.restore();
+    }
+    for (const b of this.bolts) this.drawBolt(ctx, b);
     for (const pt of this.particles) {
       ctx.globalAlpha = Math.max(0, pt.life / pt.max);
       box(ctx, pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size, pt.color);
@@ -538,8 +646,17 @@ class World {
     if (it.fall && it.landed && it.life < 0.8 && Math.floor(it.life * 10) % 2 === 0) return;
     if (it.type === 'coin') {
       drawCoin(ctx, x, y, 1, 0.3 + Math.abs(Math.cos(this.time * 3 + it.phase)) * 0.7);
-    } else if (it.type === 'gem') {
-      drawGem(ctx, x, y, 1.1);
+    } else if (GEMS[it.type]) {
+      drawGem(ctx, x, y, it.type === 'gem' ? 1.1 : 1.3, it.type);
+      if (it.type === 'diamond' && Math.sin(this.time * 4 + it.phase) > 0.6) drawStar(ctx, x + 8, y - 10, 6, '#ffffff');
+    } else if (orbElement(it.type)) {
+      drawOrb(ctx, orbElement(it.type), x, y, 1, this.time);
+    } else if (POTIONS[it.type]) {
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath();
+      ctx.arc(x, y, 20 + Math.sin(this.time * 5) * 2, 0, Math.PI * 2);
+      ctx.fill();
+      drawPotion(ctx, it.type, x, y, 1.2);
     } else if (FOOD.includes(it.type)) {
       drawFood(ctx, it.type, x, y, 1.2);
     } else if (WEAPONS[it.type] || ARMOR.includes(it.type)) {
@@ -551,7 +668,7 @@ class World {
         ctx.save();
         ctx.translate(x - 4, y + 14);
         ctx.rotate(0.5);
-        const s = it.type === 'spear' ? 0.55 : 0.85;
+        const s = it.type === 'spear' ? 0.55 : it.type === 'firewand' ? 0.75 : 0.85;
         ctx.scale(s, s);
         drawWeapon(ctx, it.type);
         ctx.restore();
@@ -569,6 +686,8 @@ class World {
       box(ctx, -8, -2, 16, 4, '#f2f0e6');
       box(ctx, -11, -4, 5, 8, '#f2f0e6');
       box(ctx, 6, -4, 5, 8, '#f2f0e6');
+    } else if (pr.kind === 'breath') {
+      drawFireball(ctx, pr.el, pr.spin, 1.1);
     } else {
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.lineWidth = 2;
@@ -583,6 +702,46 @@ class World {
       ctx.stroke();
     }
     ctx.restore();
+  }
+
+  // A zig-zag lightning flash between two monsters
+  drawBolt(ctx, b) {
+    const pts = [b.x1, b.y1];
+    for (let k = 1; k < 5; k++) {
+      pts.push(b.x1 + (b.x2 - b.x1) * k / 5 + (Math.random() - 0.5) * 20,
+        b.y1 + (b.y2 - b.y1) * k / 5 + (Math.random() - 0.5) * 20);
+    }
+    pts.push(b.x2, b.y2);
+    for (const [col, width] of [['#ffe14d', 7], ['#ffffff', 3]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+      ctx.stroke();
+    }
+  }
+
+  // Powers and potions that are working right now, each with a bar that runs down.
+  drawEffects(ctx) {
+    const p = this.player;
+    const list = [];
+    if (p.power) {
+      list.push({ draw: (x, y) => drawOrb(ctx, p.power, x, y, 0.8, this.time),
+        left: p.powerT / POWER_TIME, color: ELEMENTS[p.power].colors[0] });
+    }
+    for (const [kind, left] of [['jumppot', p.superJump], ['starpot', p.star], ['magnetpot', p.magnet]]) {
+      if (left > 0) {
+        list.push({ draw: (x, y) => drawPotion(ctx, kind, x, y, 0.9),
+          left: left / POTIONS[kind].time, color: POTIONS[kind].color });
+      }
+    }
+    list.forEach((f, i) => {
+      const x = 37 + i * 50, y = 124;
+      f.draw(x, y);
+      box(ctx, x - 19, y + 20, 38, 8, '#2a1410');
+      box(ctx, x - 17, y + 22, 34 * Math.max(0, f.left), 4, f.color);
+    });
   }
 
   drawHud(ctx) {
@@ -600,7 +759,7 @@ class World {
       ctx.save();
       ctx.translate(30, 88);
       ctx.rotate(0.75);
-      const s = p.weapon === 'spear' ? 0.55 : 0.8;
+      const s = p.weapon === 'spear' ? 0.55 : p.weapon === 'firewand' ? 0.7 : 0.8;
       ctx.scale(s, s);
       drawWeapon(ctx, p.weapon);
       ctx.restore();
@@ -614,6 +773,7 @@ class World {
       if (p.armor[k]) { drawArmorIcon(ctx, k, ax, 73, 1); ax += 32; }
     }
     for (let i = 0; i < p.armor.extra; i++) { drawArmorIcon(ctx, 'extra', ax, 73, 1); ax += 32; }
+    this.drawEffects(ctx);
 
     // points and gems
     if (this.mode === 'level') {
