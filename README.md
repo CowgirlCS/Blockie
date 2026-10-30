@@ -1,7 +1,7 @@
 # Blockie
 
 A blocky side-scrolling adventure for young players. Help Blockie, a little red knight,
-collect points and beat the 5 bosses of the Blockie Forest!
+collect points and beat the 8 bosses of the Blockie Forest!
 
 ## How to play
 
@@ -21,6 +21,15 @@ No internet and no installing needed.
 - Get the level's points, beat the boss, then touch the red flag.
 - Food heals one heart and makes you fast for a bit.
 - Armor (helmet, chest plate, shield) blocks one hit each, then breaks.
+- **Bedrock armor** (dark stone with a blue crystal) blocks **3 hits** per piece.
+  The HUD shows how many hits each piece has left. Hold ↓ with the **bedrock shield**
+  and it bounces bones, fire, snowballs and rocks back at the monsters!
+  You can also buy Bedrock Armor in the Castle Shop to start every level wearing it.
+- **Elemental dinos** walk up to you and roar before they attack:
+  - **Fire** (red) and **ice** (blue) dinos breathe at you
+  - **Lightning** (yellow) dinos stomp a zap along the ground. Jump over it!
+  - **Wind** (green) dinos blow you backward
+  Beat one and it drops its power orb.
 - Walk past a friendly animal to say hi. Each one gives you a present:
   - **Elephant** and **sheep**: a gem
   - **Pig**: a bunch of coins
@@ -53,8 +62,16 @@ No internet and no installing needed.
 3. **Spider Hollow** - a dark cave full of spiders. The Fire Wand is here! Boss: Spider Queen
 4. **Skeleton Ruins** - an old graveyard with fire and ice dragons. Boss: Skeleton King
 5. **Castle of the Forest** - robots, dragons and everyone else. Boss: The Mob Lord
+6. **Dino Valley** - volcanoes, palm trees and dinos of every element. The first bedrock armor is here!
+   Boss: Rex the Dino King, who uses a new element every attack and charges across the room
+7. **Frozen Peaks** - snow, ice dinos and ice dragons. Boss: The Big Yeti (snowballs and falling icicles)
+8. **Bedrock Deep** - a dark cave with lava pits. Boss: The Bedrock Golem (boulders, ground slams and rock rain)
 
-After levels 1 to 4 there is a bonus round (Gem Rain or Spider Chase).
+After levels 1 to 7 there is a bonus round (Gem Rain, Spider Chase or Dino Stampede).
+
+**Bosses get ANGRY** at half health: they glow red, move faster and use new attacks,
+like ground waves you have to jump over, extra webs and bones, or calling helpers.
+Bosses have a little less health in Easy mode.
 
 ## For grown-ups
 
@@ -62,8 +79,8 @@ Plain HTML, CSS and JavaScript. No libraries, no build step.
 
 - `js/levels.js` - the level maps (easy to edit: each level is a list of simple calls)
 - `js/items.js` - gems, potions and elemental powers (names, colors, how long they last)
-- `js/entities.js` - Blockie, monsters, dragons, the friendly animals
-- `js/bosses.js` - the five bosses
+- `js/entities.js` - Blockie, monsters, dragons, dinos, the friendly animals
+- `js/bosses.js` - the eight bosses
 - `js/world.js` - playing a level, the camera and the HUD
 - `js/screens.js` - menus, shop, win and game-over screens
 - `js/draw.js` - all the drawing (everything is made of rectangles)

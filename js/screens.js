@@ -110,7 +110,7 @@ class TitleScreen {
     if (Input.hit('enter')) {
       Sound.play('select');
       if (id === 'continue') {
-        Game.go(new SelectScreen(Math.min(Save.data.unlocked, 5) - 1));
+        Game.go(new SelectScreen(Math.min(Save.data.unlocked, LEVELS.length) - 1));
       } else if (Save.data.started) {
         this.confirm = 1;
       } else {
@@ -130,6 +130,7 @@ class TitleScreen {
     drawChicken(ctx, 420, 468, -1, this.t, false, Math.sin(this.t * 2) < -0.3);
     drawPig(ctx, 530, 468, -1, this.t, false);
     drawDragon(ctx, 110, 250 + Math.sin(this.t * 2) * 12, 1, 1.4, this.t, false, { el: 'fire' });
+    drawDino(ctx, 890, 468, -1, 1, this.t, false, { el: ['fire', 'ice', 'zap', 'wind'][Math.floor(this.t / 2) % 4] });
 
     const opts = this.options();
     drawMenu(ctx, opts.map((id) => this.label(id)), this.cursor, W / 2, 250);
@@ -153,13 +154,13 @@ class TitleScreen {
 
 class SelectScreen {
   constructor(cursor = 0) {
-    this.cursor = Math.max(0, Math.min(4, cursor));
+    this.cursor = Math.max(0, Math.min(LEVELS.length - 1, cursor));
     this.row = 0;   // 0 = level signs, 1 = castle shop button
     this.t = 0;
     this.bx = this.signX(this.cursor);
   }
 
-  signX(i) { return 120 + i * 180; }
+  signX(i) { return 88 + i * 112; }
 
   update(dt) {
     this.t += dt;
@@ -168,7 +169,7 @@ class SelectScreen {
     if (Input.hit('down') && this.row === 1) { this.row = 0; Sound.play('menu'); }
     if (this.row === 0) {
       if (Input.hit('left') && this.cursor > 0) { this.cursor--; Sound.play('menu'); }
-      if (Input.hit('right') && this.cursor < 4) { this.cursor++; Sound.play('menu'); }
+      if (Input.hit('right') && this.cursor < LEVELS.length - 1) { this.cursor++; Sound.play('menu'); }
     }
     const target = this.signX(this.cursor);
     this.walking = Math.abs(target - this.bx) > 2;
@@ -204,35 +205,35 @@ class SelectScreen {
     box(ctx, W / 2 - 127, 79, 254, 42, shopSel ? '#d7262e' : '#6a5a5a');
     say(ctx, 'Castle Shop', W / 2, 100, 26, '#ffffff');
 
-    // the five level signs
-    for (let i = 0; i < 5; i++) {
+    // the level signs
+    for (let i = 0; i < LEVELS.length; i++) {
       const x = this.signX(i);
       const open = i < Save.data.unlocked;
       const sel = this.row === 0 && i === this.cursor;
       const lift = sel ? Math.sin(this.t * 5) * 3 - 4 : 0;
       box(ctx, x - 6, 290, 12, 178, '#7a4a22');
       const by = 160 + lift;
-      if (sel) box(ctx, x - 82, by - 6, 164, 132, '#ffe14d');
-      box(ctx, x - 76, by, 152, 120, '#5a3416');
-      box(ctx, x - 70, by + 6, 140, 108, open ? '#c08a4a' : '#8a8484');
-      say(ctx, String(i + 1), x, by + 34, 40, open ? '#ffffff' : '#cfcfcf');
+      if (sel) box(ctx, x - 56, by - 6, 112, 132, '#ffe14d');
+      box(ctx, x - 51, by, 102, 120, '#5a3416');
+      box(ctx, x - 46, by + 6, 92, 108, open ? '#c08a4a' : '#8a8484');
+      say(ctx, String(i + 1), x, by + 34, 34, open ? '#ffffff' : '#cfcfcf');
       const lines = LEVELS[i].signName.split('\n');
-      say(ctx, lines[0], x, by + 72, 18, open ? '#ffffff' : '#cfcfcf');
-      say(ctx, lines[1], x, by + 94, 18, open ? '#ffffff' : '#cfcfcf');
+      say(ctx, lines[0], x, by + 72, 15, open ? '#ffffff' : '#cfcfcf');
+      say(ctx, lines[1], x, by + 92, 15, open ? '#ffffff' : '#cfcfcf');
       if (!open) {
         // a little padlock
-        box(ctx, x + 30, by + 14, 30, 24, '#5a5a66');
-        box(ctx, x + 36, by + 2, 18, 14, '#5a5a66');
-        box(ctx, x + 40, by + 6, 10, 10, '#8a8484');
-        box(ctx, x + 43, by + 22, 4, 8, '#2a2a30');
+        box(ctx, x + 18, by + 16, 22, 18, '#5a5a66');
+        box(ctx, x + 22, by + 6, 14, 12, '#5a5a66');
+        box(ctx, x + 25, by + 9, 8, 9, '#8a8484');
+        box(ctx, x + 27, by + 22, 4, 7, '#2a2a30');
       }
-      if (Save.data.beaten[i]) drawStar(ctx, x + 58, by + 6, 16, '#ffcc22');
+      if (Save.data.beaten[i]) drawStar(ctx, x + 38, by + 6, 14, '#ffcc22');
       if (sel && Save.data.levelBest[i] > 0) {
         say(ctx, `Best: ${Save.data.levelBest[i]}`, x, by - 22, 18, '#ffe14d');
       }
     }
 
-    drawBlockie(ctx, this.bx + 30, 468, {
+    drawBlockie(ctx, this.bx + 24, 468, {
       facing: this.walking ? this.facing : 1,
       walk: this.walking ? this.t * 300 : 0,
       weapon: Save.data.weapon
@@ -380,7 +381,7 @@ class LevelWinScreen {
     const s = Save.data;
     s.levelBest[this.i] = Math.max(s.levelBest[this.i], world.points);
     s.beaten[this.i] = true;
-    s.unlocked = Math.max(s.unlocked, Math.min(5, this.i + 2));
+    s.unlocked = Math.max(s.unlocked, Math.min(LEVELS.length, this.i + 2));
     Save.write();
   }
 
@@ -388,7 +389,7 @@ class LevelWinScreen {
     this.t += dt;
     if (this.t > 0.6 && Input.hit('enter')) {
       Sound.play('select');
-      if (this.i === 4) Game.go(new EndingScreen());
+      if (!LEVELS[this.i].bonus) Game.go(new EndingScreen());
       else Game.go(new BonusIntroScreen(this.i));
     }
   }
@@ -458,7 +459,7 @@ class BonusEndScreen {
     const w = this.world;
     drawScene(ctx, w.def.theme, this.t * 20, this.t);
     drawPanel(ctx, W / 2 - 300, 90, 600, 300);
-    const title = w.result === 'caught' ? 'The spiders got you!'
+    const title = w.result === 'caught' ? `The ${w.def.chaser}s got you!`
       : w.result === 'escaped' ? 'You escaped! +5 gems!' : "Time's up!";
     say(ctx, title, W / 2, 145, 40, '#ffe14d');
     say(ctx, `You got ${w.gemsGot} gems!`, W / 2, 215, 36, '#bff6ff');
@@ -474,6 +475,7 @@ const SHOP = [
   { id: 'speed', name: 'Fast Boots', desc: 'Run faster', costs: [8, 16, 28] },
   { id: 'jump', name: 'Jump Boots', desc: 'Jump higher', costs: [8, 16, 28] },
   { id: 'armor', name: 'Gold Armor', desc: 'Blocks 1 hit every level', costs: [15, 30] },
+  { id: 'bedrock', name: 'Bedrock Armor', desc: 'Start levels in bedrock armor', costs: [30, 45, 60] },
   { id: 'points', name: 'Point Star', desc: 'More points', costs: [20, 40] },
   { id: 'heart', name: 'Extra Heart', desc: '+1 heart', costs: [25, 50] }
 ];
@@ -507,6 +509,9 @@ function drawShopIcon(ctx, id, x, y) {
     case 'armor':
       drawArmorIcon(ctx, 'extra', 0, 0, 1.3);
       break;
+    case 'bedrock':
+      drawArmorIcon(ctx, 'shield', 0, 0, 1.3, true);
+      break;
     case 'points':
       drawStar(ctx, 0, 0, 16, '#ffcc22');
       break;
@@ -519,7 +524,7 @@ function drawShopIcon(ctx, id, x, y) {
 
 class ShopScreen {
   constructor(next) {
-    this.next = Math.min(4, next);
+    this.next = Math.min(LEVELS.length - 1, next);
     this.cursor = 0;
     this.t = 0;
     this.msg = '';
@@ -583,13 +588,13 @@ class ShopScreen {
     say(ctx, gems, W - 110, 44, 30, '#bff6ff', 'right');
     drawGem(ctx, W - 130 - ctx.measureText(gems).width, 44, 1.3);
 
-    const top = 112;
-    const gap = 54;
+    const top = 104;
+    const gap = 48;
     for (let i = 0; i <= SHOP.length; i++) {
       const y = top + i * gap;
       const sel = i === this.cursor;
-      box(ctx, 130, y - 24, 700, 48, sel ? '#d7262e' : 'rgba(40,20,20,0.7)');
-      if (sel) box(ctx, 130, y - 24, 700, 4, '#ff5a4f');
+      box(ctx, 130, y - 22, 700, 44, sel ? '#d7262e' : 'rgba(40,20,20,0.7)');
+      if (sel) box(ctx, 130, y - 22, 700, 4, '#ff5a4f');
       if (i === SHOP.length) {
         say(ctx, 'Done!  Back to the map', W / 2, y, 26, '#ffffff');
         continue;
@@ -627,7 +632,7 @@ class EndingScreen {
     this.t += dt;
     if (this.t > 1 && Input.hit('enter')) {
       Sound.play('select');
-      Game.go(new SelectScreen(4));
+      Game.go(new SelectScreen(LEVELS.length - 1));
     }
   }
 
@@ -641,7 +646,11 @@ class EndingScreen {
     say(ctx, `Total points: ${Save.totalScore()}`, W / 2, 280, 32, '#bff6ff');
     blinkText(ctx, 'Press Enter', 325, this.t);
     const hop = Math.abs(Math.sin(this.t * 5)) * 30;
-    drawBlockie(ctx, W / 2 - 60, 468 - hop, { facing: 1, weapon: Save.data.weapon, air: hop > 2, armor: { helmet: true, chest: true, shield: true } });
+    drawBlockie(ctx, W / 2 - 60, 468 - hop, {
+      facing: 1, weapon: Save.data.weapon, air: hop > 2,
+      armor: { helmet: 1, chest: 1, shield: 1, bedrock: { helmet: true, chest: true, shield: true } }
+    });
+    drawDino(ctx, 90, 468, 1, 1, this.t, false, { el: 'wind' });
     drawElephant(ctx, W / 2 + 120, 468, -1, this.t, true);
     drawHorse(ctx, 220, 468, 1, this.t, true);
     drawChicken(ctx, W / 2 + 20, 468, 1, this.t, true);

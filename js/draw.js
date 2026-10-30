@@ -233,22 +233,52 @@ function drawWeapon(ctx, type) {
   }
 }
 
-function drawShield(ctx, x, y, s) {
+// Bedrock: dark speckled stone with a glowing blue crystal.
+const BEDROCK_COLORS = { main: '#3a3a42', light: '#5a5a66', dark: '#1e1e24', gem: '#7fd6ff' };
+
+function drawShield(ctx, x, y, s, bedrock = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  box(ctx, 0, 0, 12, 18, '#ffcc22');
-  box(ctx, 2, 2, 8, 14, '#d7262e');
-  box(ctx, 5, 3, 2, 12, '#ffcc22');
-  box(ctx, 3, 7, 6, 2, '#ffcc22');
+  if (bedrock) {
+    const b = BEDROCK_COLORS;
+    box(ctx, -1, -1, 14, 20, b.light);
+    box(ctx, 1, 1, 10, 16, b.main);
+    box(ctx, 2, 3, 3, 3, b.dark);
+    box(ctx, 7, 12, 3, 3, b.dark);
+    box(ctx, 4, 6, 4, 5, b.gem);
+    box(ctx, 4, 6, 2, 2, '#ffffff');
+  } else {
+    box(ctx, 0, 0, 12, 18, '#ffcc22');
+    box(ctx, 2, 2, 8, 14, '#d7262e');
+    box(ctx, 5, 3, 2, 12, '#ffcc22');
+    box(ctx, 3, 7, 6, 2, '#ffcc22');
+  }
   ctx.restore();
 }
 
-function drawArmorIcon(ctx, type, x, y, s = 1) {
+function drawArmorIcon(ctx, type, x, y, s = 1, bedrock = false) {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
-  if (type === 'helmet') {
+  const b = BEDROCK_COLORS;
+  if (bedrock && type === 'helmet') {
+    box(ctx, -11, -10, 22, 18, b.main);
+    box(ctx, -11, -10, 22, 3, b.light);
+    box(ctx, -6, -2, 14, 5, b.dark);
+    box(ctx, -8, -6, 3, 3, b.dark);
+    box(ctx, -2, -16, 4, 6, b.gem);
+  } else if (bedrock && type === 'chest') {
+    box(ctx, -15, -10, 6, 7, b.main);
+    box(ctx, 9, -10, 6, 7, b.main);
+    box(ctx, -10, -10, 20, 19, b.main);
+    box(ctx, -10, -10, 20, 3, b.light);
+    box(ctx, -8, 2, 4, 3, b.dark);
+    box(ctx, 4, -5, 3, 3, b.dark);
+    box(ctx, -3, -5, 6, 6, b.gem);
+  } else if (bedrock && type === 'shield') {
+    drawShield(ctx, -9, -12, 1.4, true);
+  } else if (type === 'helmet') {
     box(ctx, -10, -9, 20, 17, '#e0342f');
     box(ctx, -11, -10, 22, 4, '#d5dde3');
     box(ctx, -6, -2, 14, 5, '#2a1418');
@@ -282,6 +312,8 @@ function drawStar(ctx, x, y, r, color) {
 // o: facing, walk, air, weapon, swing (0..1 or -1), armor, blocking, spin, boost, webbed, chilled
 function drawBlockie(ctx, x, y, o) {
   const a = o.armor || {};
+  const bed = a.bedrock || {};
+  const B = BEDROCK_COLORS;
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y));
   if (o.spin) {
@@ -300,7 +332,7 @@ function drawBlockie(ctx, x, y, o) {
   const legL = o.air ? -3 : step * 3;
   const legR = o.air ? 2 : -step * 3;
 
-  if (a.shield && !o.blocking) drawShield(ctx, -17, -30, 0.8);
+  if (a.shield && !o.blocking) drawShield(ctx, -17, -30, 0.8, bed.shield);
 
   // legs and boots
   box(ctx, -8 + legL, -10, 7, 10, '#3d3d4f');
@@ -313,7 +345,13 @@ function drawBlockie(ctx, x, y, o) {
   box(ctx, -10, -24, 20, 3, '#ff5a4f');
   box(ctx, -10, -12, 20, 3, '#7a1010');
   box(ctx, -2, -12, 4, 3, '#ffd23f');
-  if (a.chest) {
+  if (a.chest && bed.chest) {
+    box(ctx, -11, -24, 22, 12, B.main);
+    box(ctx, -11, -24, 22, 2, B.light);
+    box(ctx, -8, -16, 3, 3, B.dark);
+    box(ctx, 5, -21, 3, 3, B.dark);
+    box(ctx, -2, -21, 5, 5, B.gem);
+  } else if (a.chest) {
     box(ctx, -9, -23, 18, 10, '#d5dde3');
     box(ctx, -9, -23, 18, 2, '#ffffff');
     box(ctx, -2, -20, 4, 4, '#d7262e');
@@ -329,7 +367,15 @@ function drawBlockie(ctx, x, y, o) {
   box(ctx, -3, -33, 13, 6, '#2a1418');
   box(ctx, 1, -32, 3, 3, '#ffffff');
   box(ctx, 6, -32, 3, 3, '#ffffff');
-  if (a.helmet) {
+  if (a.helmet && bed.helmet) {
+    box(ctx, -11, -43, 22, 8, B.main);
+    box(ctx, -11, -43, 22, 2, B.light);
+    box(ctx, -12, -37, 4, 12, B.main);
+    box(ctx, -6, -40, 3, 3, B.dark);
+    box(ctx, 4, -41, 4, 3, B.dark);
+    box(ctx, -2, -50, 5, 7, B.gem);
+    box(ctx, -2, -50, 2, 2, '#ffffff');
+  } else if (a.helmet) {
     box(ctx, -11, -41, 22, 4, '#d5dde3');
     box(ctx, -5, -49, 6, 8, '#ffcc22');
     box(ctx, -9, -47, 4, 5, '#ffcc22');
@@ -368,7 +414,7 @@ function drawBlockie(ctx, x, y, o) {
   }
   box(ctx, hx - 3, hy - 3, 7, 7, '#c9d1d8');
 
-  if (a.shield && o.blocking) drawShield(ctx, 8, -36, 1.2);
+  if (a.shield && o.blocking) drawShield(ctx, 8, -36, 1.2, bed.shield);
 
   if (o.webbed) {
     ctx.strokeStyle = 'rgba(255,255,255,0.85)';
@@ -579,6 +625,144 @@ function drawDragon(ctx, x, y, dir, s, t, flash, o = {}) {
     box(ctx, 26, -32, 10, 2, c(dark));
   }
   poly(ctx, c(wing), [-6, -26, 8, -26, 2, -50 - flap * 12, -18, -44 - flap * 14]);
+  ctx.restore();
+}
+
+// Dinos walk on two legs. At s = 1 the body is about 48 wide. o.el picks the colors.
+const DINO_COLORS = {
+  fire: { body: '#e0502a', dark: '#9a2a14', belly: '#ffcc22', spike: '#ffe14d' },
+  ice:  { body: '#4aa8ff', dark: '#2a6ac0', belly: '#e0f6ff', spike: '#ffffff' },
+  zap:  { body: '#f0c020', dark: '#a07a00', belly: '#fff3a0', spike: '#5a4aff' },
+  wind: { body: '#4cc08a', dark: '#2a7a54', belly: '#d8ffe8', spike: '#ffffff' }
+};
+
+function drawDino(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  const k = DINO_COLORS[o.el || 'fire'];
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const step = o.still ? 0 : Math.sin(t * 7) * 3;
+  const sway = Math.sin(t * 3) * 2;
+  // tail
+  box(ctx, -40, -30 + sway, 12, 6, c(k.body));
+  box(ctx, -30, -34 + sway / 2, 14, 10, c(k.body));
+  // legs
+  box(ctx, -14 + step, -12, 10, 12, c(k.dark));
+  box(ctx, 4 - step, -12, 10, 12, c(k.dark));
+  box(ctx, -14 + step, -3, 13, 3, c(k.dark));
+  box(ctx, 4 - step, -3, 13, 3, c(k.dark));
+  // body and back spikes
+  box(ctx, -18, -38, 34, 28, c(k.body));
+  box(ctx, -6, -28, 20, 16, c(k.belly));
+  for (let i = 0; i < 4; i++) box(ctx, -16 + i * 8, -42, 5, 4, c(k.spike));
+  // tiny arms
+  box(ctx, 14, -28, 7, 3, c(k.dark));
+  box(ctx, 18, -28, 3, 6, c(k.dark));
+  // neck and head
+  box(ctx, 6, -46, 14, 14, c(k.body));
+  const jaw = o.roar ? 6 : 0;
+  box(ctx, 8, -56, 30, 14, c(k.body));
+  if (o.roar) {
+    box(ctx, 14, -42, 22, jaw, '#5a0a0a');
+    box(ctx, 34, -43, 6, 6, k.spike);
+  }
+  box(ctx, 12, -42 + jaw, 24, 6, c(k.body));
+  box(ctx, 26, -42, 3, 3, '#ffffff');
+  box(ctx, 32, -42, 3, 3, '#ffffff');
+  box(ctx, 22, -54, 6, 6, '#ffffff');
+  box(ctx, 25, -53, 3, 4, '#111111');
+  box(ctx, 35, -54, 2, 2, '#2a0a0a');
+  box(ctx, 10, -60, 4, 4, c(k.spike));
+  box(ctx, 17, -60, 4, 4, c(k.spike));
+  if (o.crown) {
+    box(ctx, 9, -64, 22, 6, '#ffcc22');
+    box(ctx, 9, -68, 4, 4, '#ffcc22');
+    box(ctx, 18, -68, 4, 4, '#ffcc22');
+    box(ctx, 27, -68, 4, 4, '#ffcc22');
+    box(ctx, 18, -63, 4, 3, '#d7262e');
+  }
+  ctx.restore();
+}
+
+// The Big Yeti: a furry snow monster about 52 wide at s = 1.
+function drawYeti(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  const fur = '#f2f6ff', shade = '#c8d6ea';
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const step = o.still ? 0 : Math.sin(t * 5) * 2;
+  box(ctx, -15 + step, -12, 11, 12, c(shade));
+  box(ctx, 4 - step, -12, 11, 12, c(shade));
+  box(ctx, -16 + step, -4, 13, 4, c('#8aa8c8'));
+  box(ctx, 3 - step, -4, 13, 4, c('#8aa8c8'));
+  box(ctx, -20, -42, 40, 32, c(fur));
+  box(ctx, -20, -14, 40, 4, c(shade));
+  box(ctx, -12, -36, 24, 20, c('#dfe8f6'));
+  box(ctx, -26, -40, 8, 26, c(shade));
+  if (o.windup) {
+    box(ctx, 18, -62, 8, 22, c(shade));
+    box(ctx, 15, -72, 14, 12, '#ffffff');
+  } else {
+    box(ctx, 18, -40, 8, 26, c(shade));
+  }
+  box(ctx, -14, -58, 28, 18, c(fur));
+  box(ctx, -8, -55, 20, 13, c('#7aa8e0'));
+  box(ctx, -4, -53, 5, 5, '#ffffff');
+  box(ctx, 6, -53, 5, 5, '#ffffff');
+  box(ctx, -2, -52, 3, 3, '#111111');
+  box(ctx, 8, -52, 3, 3, '#111111');
+  if (o.angry) {
+    box(ctx, -5, -56, 7, 2, '#1a2a4a');
+    box(ctx, 5, -56, 7, 2, '#1a2a4a');
+  }
+  box(ctx, -1, -46, 11, 3, '#1a2a4a');
+  box(ctx, 0, -46, 2, 2, '#ffffff');
+  box(ctx, 7, -46, 2, 2, '#ffffff');
+  box(ctx, -16, -64, 4, 8, c('#c8b890'));
+  box(ctx, 12, -64, 4, 8, c('#c8b890'));
+  ctx.restore();
+}
+
+// The Bedrock Golem: a walking pile of bedrock with lava glowing inside. 48 wide at s = 1.
+function drawGolem(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  const B = BEDROCK_COLORS;
+  const glow = Math.sin(t * 4) > 0 ? '#ffe14d' : '#ff8a1f';
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const step = o.still ? 0 : Math.sin(t * 4) * 2;
+  box(ctx, -18 + step, -16, 14, 16, c(B.main));
+  box(ctx, 4 - step, -16, 14, 16, c(B.main));
+  box(ctx, -24, -48, 48, 34, c(B.main));
+  box(ctx, -24, -48, 48, 4, c(B.light));
+  box(ctx, -20, -40, 5, 5, c(B.dark));
+  box(ctx, 12, -26, 6, 5, c(B.dark));
+  box(ctx, -12, -22, 4, 4, c(B.dark));
+  // lava cracks and a glowing heart
+  box(ctx, -14, -42, 3, 14, '#ff5a1f');
+  box(ctx, 14, -44, 3, 10, '#ff5a1f');
+  box(ctx, -6, -36, 12, 12, '#ff5a1f');
+  box(ctx, -3, -33, 6, 6, glow);
+  // arms: up high when getting ready to attack
+  if (o.windup) {
+    box(ctx, -34, -78, 12, 32, c(B.main));
+    box(ctx, 22, -78, 12, 32, c(B.main));
+    box(ctx, -36, -88, 16, 12, c(B.light));
+    box(ctx, 20, -88, 16, 12, c(B.light));
+  } else {
+    box(ctx, -34, -46, 12, 30, c(B.main));
+    box(ctx, 22, -46, 12, 30, c(B.main));
+    box(ctx, -36, -20, 16, 12, c(B.light));
+    box(ctx, 20, -20, 16, 12, c(B.light));
+  }
+  box(ctx, -12, -62, 24, 16, c(B.main));
+  box(ctx, -12, -62, 24, 3, c(B.light));
+  box(ctx, -7, -56, 5, 4, o.angry ? '#ff3a2a' : '#ffe14d');
+  box(ctx, 3, -56, 5, 4, o.angry ? '#ff3a2a' : '#ffe14d');
+  box(ctx, -1, -66, 6, 5, B.gem);
   ctx.restore();
 }
 
@@ -841,6 +1025,29 @@ const THEMES = {
     water: '#2a7de1', groundTile: 4,
     decor: ['torch', 'grass', 'barrel', 'banner', 'torch'], density: 0.3
   }),
+  jungle: Object.assign({}, BASE_THEME, {
+    sky: ['#ffb36a', '#fff0b0'], far: '#8a6a5a', near: '#3f8a3a',
+    farShape: 'volcano', nearShape: 'palms', sun: true,
+    grass: '#4caf38', grassLight: '#7ed65a', grassDark: '#2f7a24',
+    dirt: '#8a5a34', dirtDark: '#6a4224',
+    decor: ['fern', 'fern', 'palm', 'dinoegg', 'grass', 'fossil'], density: 0.38
+  }),
+  snow: Object.assign({}, BASE_THEME, {
+    sky: ['#8ab8e8', '#eef6ff'], far: '#c8daf0', near: '#a8c0dc',
+    farShape: 'peaks', nearShape: 'pines', snow: true, clouds: true,
+    grass: '#f4f8ff', grassLight: '#ffffff', grassDark: '#c8d8ea',
+    dirt: '#7a6a5a', dirtDark: '#5e5044',
+    stone: '#b8c8dc', stoneDark: '#94a8c0',
+    decor: ['pine', 'pine', 'snowman', 'icerock', 'grass'], density: 0.32
+  }),
+  deep: Object.assign({}, BASE_THEME, {
+    sky: ['#120a0a', '#3a1a10'], far: '#2a1a1a', near: '#3a2a2a',
+    farShape: 'crystals', nearShape: null, dark: true,
+    lava: '#ff5a1f', groundTile: 6,
+    rock: '#3a3a42', rockDark: '#1e1e24',
+    stone: '#4a4a52', stoneDark: '#2e2e36',
+    decor: ['crystal', 'lavarock', 'crystal', 'rocks'], density: 0.3
+  }),
   bonus: Object.assign({}, BASE_THEME, {
     sky: ['#ff9ad5', '#ffe6a8'], far: '#ffc0e0', near: '#9be08a',
     rainbow: true, clouds: true, nearShape: null,
@@ -903,6 +1110,14 @@ function drawBackdrop(ctx, th, camX, t) {
     }
   }
   hillLayer(ctx, th.far, camX * 0.15, 230, 120, 60, 1.3, th.farShape);
+  if (th.snow) {
+    // snowflakes drifting down
+    for (let k = 0; k < 50; k++) {
+      const fx = (hash(k) * W + Math.sin(t + k) * 20 - camX * 0.3) % W;
+      const fy = (hash(k + 9) * H + t * (30 + hash(k + 4) * 40)) % H;
+      box(ctx, fx < 0 ? fx + W : fx, fy, 4, 4, 'rgba(255,255,255,0.85)');
+    }
+  }
   hillLayer(ctx, th.near, camX * 0.35, th.nearShape === 'wall' ? 190 : 140, th.nearShape === 'wall' ? 0 : 90, 40, 7.1, th.nearShape);
 }
 
@@ -947,6 +1162,32 @@ function drawFeature(ctx, shape, x, y, color, k) {
       break;
     case 'rocks':
       poly(ctx, color, [x - 30, y, x, y - 90 - hash(k) * 60, x + 30, y]);
+      break;
+    case 'volcano':
+      poly(ctx, color, [x - 90, y, x - 22, y - 130, x + 22, y - 130, x + 90, y]);
+      box(ctx, x - 22, y - 134, 44, 6, '#ff5a1f');
+      box(ctx, x - 10, y - 154, 20, 16, 'rgba(120,110,110,0.5)');
+      box(ctx, x - 4, y - 176, 26, 18, 'rgba(120,110,110,0.35)');
+      break;
+    case 'palms':
+      box(ctx, x - 3, y - 70, 6, 70, '#7a5a32');
+      box(ctx, x - 30, y - 76, 60, 8, '#2f7a24');
+      box(ctx, x - 20, y - 84, 40, 8, '#3f9a32');
+      box(ctx, x - 36, y - 68, 10, 10, '#2f7a24');
+      box(ctx, x + 26, y - 68, 10, 10, '#2f7a24');
+      break;
+    case 'peaks':
+      poly(ctx, color, [x - 80, y, x, y - 150 - hash(k) * 50, x + 80, y]);
+      poly(ctx, '#ffffff', [x - 24, y - 105 - hash(k) * 35, x, y - 150 - hash(k) * 50, x + 24, y - 105 - hash(k) * 35]);
+      break;
+    case 'pines':
+      box(ctx, x - 4, y - 16, 8, 16, '#6a5040');
+      poly(ctx, '#5a8a6a', [x - 26, y - 14, x, y - 90, x + 26, y - 14]);
+      poly(ctx, '#ffffff', [x - 10, y - 60, x, y - 90, x + 10, y - 60]);
+      break;
+    case 'crystals':
+      poly(ctx, '#4a7aa8', [x - 14, y, x - 4, y - 70 - hash(k) * 40, x + 8, y]);
+      poly(ctx, '#7fd6ff', [x - 6, y, x - 4, y - 70 - hash(k) * 40, x, y]);
       break;
   }
 }
@@ -1174,6 +1415,77 @@ function drawDeco(ctx, d, th, t) {
       box(ctx, x + 20, y - 104, 26, 40 + wave, '#d7262e');
       box(ctx, x + 20, y - 104, 26, 4, '#ffcc22');
       box(ctx, x + 29, y - 90, 8, 8, '#ffcc22');
+      break;
+    }
+    case 'fern':
+      box(ctx, x + 16, y - 18, 3, 18, '#2f7a24');
+      box(ctx, x + 4, y - 22, 14, 4, '#3f9a32');
+      box(ctx, x + 18, y - 26, 14, 4, '#3f9a32');
+      box(ctx, x + 6, y - 12, 12, 4, '#4caf38');
+      box(ctx, x + 18, y - 16, 12, 4, '#4caf38');
+      break;
+    case 'palm':
+      box(ctx, x + 14, y - 110, 9, 110, '#8a6a3a');
+      for (let k = 0; k < 5; k++) box(ctx, x + 14, y - 100 + k * 22, 9, 3, '#6a4a22');
+      box(ctx, x - 22, y - 118, 80, 10, '#3f9a32');
+      box(ctx, x - 8, y - 128, 52, 10, '#4caf38');
+      box(ctx, x - 30, y - 108, 14, 14, '#3f9a32');
+      box(ctx, x + 52, y - 108, 14, 14, '#3f9a32');
+      box(ctx, x + 10, y - 108, 8, 8, '#6a4a22');
+      box(ctx, x + 20, y - 106, 8, 8, '#6a4a22');
+      break;
+    case 'dinoegg':
+      box(ctx, x + 2, y - 8, 32, 8, '#c9a227');
+      box(ctx, x + 10, y - 28, 16, 24, '#f6efd8');
+      box(ctx, x + 7, y - 22, 22, 14, '#f6efd8');
+      box(ctx, x + 12, y - 22, 4, 4, '#4cc08a');
+      box(ctx, x + 20, y - 14, 5, 4, '#4cc08a');
+      break;
+    case 'fossil':
+      box(ctx, x + 4, y - 6, 28, 4, '#f2f0e6');
+      for (let k = 0; k < 4; k++) box(ctx, x + 8 + k * 6, y - 14, 3, 8, '#f2f0e6');
+      box(ctx, x + 26, y - 12, 8, 8, '#f2f0e6');
+      break;
+    case 'pine':
+      box(ctx, x + 14, y - 20, 8, 20, '#6a5040');
+      poly(ctx, '#2f6a4a', [x - 10, y - 18, x + 18, y - 70, x + 46, y - 18]);
+      poly(ctx, '#3a7a5a', [x - 4, y - 44, x + 18, y - 96, x + 40, y - 44]);
+      poly(ctx, '#ffffff', [x + 8, y - 78, x + 18, y - 96, x + 28, y - 78]);
+      box(ctx, x - 6, y - 22, 14, 4, '#ffffff');
+      box(ctx, x + 30, y - 22, 14, 4, '#ffffff');
+      break;
+    case 'snowman':
+      box(ctx, x + 6, y - 24, 24, 24, '#ffffff');
+      box(ctx, x + 10, y - 42, 16, 18, '#ffffff');
+      box(ctx, x + 13, y - 36, 3, 3, '#111111');
+      box(ctx, x + 20, y - 36, 3, 3, '#111111');
+      box(ctx, x + 22, y - 32, 8, 3, '#ff8a1f');
+      box(ctx, x + 9, y - 26, 18, 4, '#d7262e');
+      box(ctx, x + 10, y - 50, 16, 8, '#2a2a30');
+      box(ctx, x + 6, y - 43, 24, 2, '#2a2a30');
+      break;
+    case 'icerock':
+      box(ctx, x + 4, y - 18, 26, 18, '#bff6ff');
+      box(ctx, x + 10, y - 26, 14, 10, '#d8faff');
+      box(ctx, x + 8, y - 16, 4, 10, '#ffffff');
+      break;
+    case 'crystal': {
+      const glow = 0.22 + Math.sin(t * 2 + d.c) * 0.08;
+      ctx.fillStyle = `rgba(127,214,255,${glow})`;
+      ctx.beginPath();
+      ctx.arc(x + 18, y - 16, 24, 0, Math.PI * 2);
+      ctx.fill();
+      poly(ctx, '#4a9ad0', [x + 8, y, x + 12, y - 30, x + 18, y]);
+      poly(ctx, '#7fd6ff', [x + 14, y, x + 20, y - 40, x + 26, y]);
+      poly(ctx, '#bff6ff', [x + 22, y, x + 28, y - 22, x + 32, y]);
+      break;
+    }
+    case 'lavarock': {
+      const f = Math.sin(t * 3 + d.c) > 0 ? '#ffe14d' : '#ff8a1f';
+      box(ctx, x + 4, y - 16, 28, 16, '#2e2e36');
+      box(ctx, x + 10, y - 22, 16, 8, '#3a3a42');
+      box(ctx, x + 12, y - 12, 4, 6, '#ff5a1f');
+      box(ctx, x + 20, y - 8, 6, 3, f);
       break;
     }
     case 'sign': {

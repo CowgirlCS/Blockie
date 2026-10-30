@@ -3,8 +3,13 @@
 
 const FOOD = ['apple', 'bread', 'carrot', 'egg'];
 const ARMOR = ['helmet', 'chest', 'shield'];
+// Bedrock armor items and the piece each one is
+const BEDROCK = { bedhelmet: 'helmet', bedchest: 'chest', bedshield: 'shield' };
 
 const PICKUP_TEXT = {
+  bedhelmet: 'Bedrock Helmet! Blocks 3 hits',
+  bedchest: 'Bedrock Chest Plate! Blocks 3 hits',
+  bedshield: 'Bedrock Shield! Hold ↓ to bounce things back',
   sword: 'Sword! Press SPACE',
   spear: 'Spear! It pokes far',
   axe: 'Battle Axe! Big hits',
@@ -18,7 +23,7 @@ const PICKUP_TEXT = {
 class World {
   constructor(levelIndex, mode = 'level') {
     this.levelIndex = levelIndex;
-    this.mode = mode;   // 'level', 'gemrain' or 'chase'
+    this.mode = mode;   // 'level' or the name of a bonus round
     this.def = mode === 'level' ? LEVELS[levelIndex] : BONUS[mode];
     this.theme = THEMES[this.def.theme];
 
@@ -62,8 +67,9 @@ class World {
     this.timer = this.def.time || 0;
     this.spawnT = 0;
     this.chasers = [];
-    if (mode === 'chase') {
-      for (let i = 0; i < 3; i++) this.chasers.push({ x: -160 - i * 70, y: GROUND * T - 24, w: 44, h: 24 });
+    if (this.def.chaser) {
+      const h = this.def.chaser === 'dino' ? 36 : 24;
+      for (let i = 0; i < 3; i++) this.chasers.push({ x: -160 - i * 70, y: GROUND * T - h, w: 44, h });
     }
 
     this.spawn = { x: b.spawnCol * T + 6, y: GROUND * T };
@@ -82,7 +88,7 @@ class World {
     this.camX = this.cameraTarget();
 
     if (mode === 'gemrain') this.say('Catch the gems!');
-    if (mode === 'chase') this.say('Run! Grab the gems!');
+    if (this.def.chaser) this.say('Run! Grab the gems!');
   }
 
   // ---------- map ----------
@@ -164,6 +170,21 @@ class World {
     this.burst(x, y, 8, [color, '#ffffff'], 120, 5, 0, 0.45);
   }
 
+  // A wave that runs along the ground. Jump over it! el picks its colors (null = dust).
+  shockwave(x, feetY, dir, el, speed = 280) {
+    this.projectiles.push({
+      kind: 'shock', el, x: x - 14, y: feetY - 22, w: 28, h: 22, vx: dir * speed, vy: 0, g: 0, life: 2.5, spin: 0
+    });
+  }
+
+  // A puff of wind that pushes Blockie away. It doesn't hurt.
+  gust(x, y, dir) {
+    this.projectiles.push({
+      kind: 'gust', x: x - 17, y: y - 22, w: 34, h: 44, vx: dir * 300, vy: 0, g: 0, life: 1.5, spin: 0
+    });
+    Sound.play('swing');
+  }
+
   // ---------- lives ----------
 
   afterDeath() {
@@ -240,7 +261,7 @@ class World {
     this.updateCheckpoints();
     this.updateFlag(dt);
     if (this.mode === 'gemrain') this.updateGemRain(dt);
-    if (this.mode === 'chase') this.updateChase(dt);
+    if (this.def.chaser) this.updateChase(dt);
 
     for (const pt of this.particles) {
       pt.vy += pt.g * dt;
@@ -273,26 +294,63 @@ class World {
   updateProjectiles(dt) {
     const p = this.player;
     for (const pr of this.projectiles) {
+      if (pr.wait > 0) {
+        // icicles and falling rocks wobble at the top for a moment first
+        pr.wait -= dt;
+        continue;
+      }
       pr.life -= dt;
       pr.vy += pr.g * dt;
       pr.x += pr.vx * dt;
       pr.y += pr.vy * dt;
       pr.spin += dt * 12;
-      const t = this.tile(Math.floor((pr.x + pr.w / 2) / T), Math.floor((pr.y + pr.h / 2) / T));
+      const mx = pr.x + pr.w / 2, my = pr.y + pr.h / 2;
+      const t = this.tile(Math.floor(mx / T), Math.floor(my / T));
       if (isSolid(t) || (pr.kind === 'web' && isOneWay(t))) {
         pr.gone = true;
-        if (pr.kind === 'web') this.burst(pr.x + pr.w / 2, pr.y + pr.h / 2, 6, ['#ffffff'], 80, 5, 0, 0.4);
-        if (pr.kind === 'breath') this.burst(pr.x + pr.w / 2, pr.y + pr.h / 2, 6, ELEMENTS[pr.el].colors, 100, 5, 0, 0.4);
+        if (pr.kind === 'web') this.burst(mx, my, 6, ['#ffffff'], 80, 5, 0, 0.4);
+        if (pr.kind === 'breath') this.burst(mx, my, 6, ELEMENTS[pr.el].colors, 100, 5, 0, 0.4);
+        if (pr.kind === 'snowball' || pr.kind === 'icicle') this.burst(mx, my, 8, ['#ffffff', '#bff6ff'], 140, 6, 300, 0.5);
+        if (pr.kind === 'rock') this.burst(mx, my, 10, ['#4a4a52', '#7a7a86', '#2a2a30'], 180, 8, 500, 0.6);
+      }
+      if (pr.kind === 'shock') {
+        // a ground wave stops at the edge of a hole
+        const below = this.tile(Math.floor(mx / T), Math.floor((pr.y + pr.h + 4) / T));
+        if (!isSolid(below) && !isOneWay(below)) pr.gone = true;
+        if (Math.random() < 0.5) {
+          this.burst(mx, pr.y + pr.h, 1, pr.el ? ELEMENTS[pr.el].colors : ['#c9b48a', '#ffffff'], 80, 6, 300, 0.4);
+        }
       }
       if (pr.life <= 0 || pr.y > ROWS * T) pr.gone = true;
       if (pr.gone || p.dead || !overlap(pr, p)) continue;
 
+      const fromFront = (mx - p.cx) * p.facing > 0;
       if (p.star > 0) {
         // Star Potion: nothing can hurt Blockie
         pr.gone = true;
-        this.sparkle(pr.x + pr.w / 2, pr.y + pr.h / 2, '#ffe14d');
+        this.sparkle(mx, my, '#ffe14d');
+      } else if (p.blocking && fromFront && p.armor.bedrock.shield && pr.kind !== 'shock') {
+        // The bedrock shield bounces things back as magic that hits monsters
+        pr.gone = true;
+        Sound.play('block');
+        this.sparkle(mx, my, '#7fd6ff');
+        this.shots.push({
+          x: mx - 9, y: my - 9, w: 18, h: 18, vx: p.facing * 560, vy: 0, dir: p.facing,
+          el: pr.el || (pr.kind === 'gust' ? 'wind' : null),
+          dmg: 2 + Save.data.upgrades.power, kb: 200, life: 1.2, spin: 0
+        });
+      } else if (pr.kind === 'gust') {
+        pr.gone = true;
+        if (p.blocking && fromFront) {
+          Sound.play('block');
+        } else if (p.invuln <= 0) {
+          p.vx = Math.sign(pr.vx) * 560;
+          p.vy = Math.min(p.vy, -260);
+          p.knockT = 0.4;
+          p.onGround = false;
+          this.popup('Whoosh!', p.cx, p.y - 10, '#d8ffe8');
+        }
       } else if (pr.kind === 'web' || (pr.kind === 'breath' && pr.el === 'ice')) {
-        const fromFront = (pr.x + pr.w / 2 - p.cx) * p.facing > 0;
         if (p.blocking && fromFront) {
           Sound.play('block');
         } else if (pr.kind === 'breath') {
@@ -433,11 +491,17 @@ class World {
       } else {
         it.taken = true;
       }
-    } else if (ARMOR.includes(type)) {
-      it.taken = true;
-      p.armor[type] = true;
-      Sound.play('armor');
-      this.say(PICKUP_TEXT[type]);
+    } else if (ARMOR.includes(type) || BEDROCK[type]) {
+      const bedrock = !!BEDROCK[type];
+      if (p.wear(BEDROCK[type] || type, bedrock)) {
+        it.taken = true;
+        Sound.play('armor');
+        this.say(PICKUP_TEXT[type]);
+      } else {
+        // already wearing a stronger bedrock piece: leave this one here
+        it.waitLeave = true;
+        this.say('Your bedrock one is stronger!');
+      }
     }
   }
 
@@ -461,7 +525,7 @@ class World {
     if (!f.up || this.winning || p.dead || this.done) return;
     if (p.x + p.w < f.x || p.x > f.x + 40) return;
 
-    if (this.mode === 'chase') {
+    if (this.def.chaser) {
       this.result = 'escaped';
       for (let i = 0; i < 5; i++) this.addGem(p.cx, p.y);
       Sound.play('win');
@@ -505,7 +569,7 @@ class World {
       ch.x += speed * dt;
       if (!this.done && overlap({ x: ch.x + 8, y: ch.y, w: ch.w - 16, h: ch.h }, p)) {
         this.result = 'caught';
-        Sound.play('web');
+        Sound.play(this.def.chaser === 'dino' ? 'roar' : 'web');
         this.done = 'bonusEnd';
       }
     }
@@ -531,10 +595,10 @@ class World {
     ctx.translate(-cam + sx, sy);
     const viewL = cam - 200, viewR = cam + W + 200;
 
-    if (th.water) {
+    if (th.water || th.lava) {
       const wave = Math.sin(this.time * 2) * 3;
-      box(ctx, cam - 20, GROUND * T + 14 + wave, W + 40, H, th.water);
-      box(ctx, cam - 20, GROUND * T + 14 + wave, W + 40, 4, '#7fc8ff');
+      box(ctx, cam - 20, GROUND * T + 14 + wave, W + 40, H, th.water || th.lava);
+      box(ctx, cam - 20, GROUND * T + 14 + wave, W + 40, 4, th.water ? '#7fc8ff' : '#ffe14d');
     }
     for (const d of this.decos) {
       const x = d.c * T;
@@ -553,6 +617,7 @@ class World {
     }
     for (const e of this.enemies) {
       if (e.x + e.w > viewL && e.x < viewR) {
+        if (e.angry) e.drawAura(ctx);
         e.draw(ctx);
         if (e.frozen > 0) {
           // a block of ice
@@ -563,9 +628,13 @@ class World {
       }
     }
     this.player.draw(ctx);
-    for (const ch of this.chasers) {
-      drawSpider(ctx, ch.x + ch.w / 2, ch.y + ch.h, 1, 0.42, this.time * 1.6, false);
-    }
+    this.chasers.forEach((ch, i) => {
+      if (this.def.chaser === 'dino') {
+        drawDino(ctx, ch.x + ch.w / 2, ch.y + ch.h, 1, 0.75, this.time * 1.6 + i, false, { el: DINO_ELEMENTS[i] });
+      } else {
+        drawSpider(ctx, ch.x + ch.w / 2, ch.y + ch.h, 1, 0.42, this.time * 1.6, false);
+      }
+    });
     for (const pr of this.projectiles) this.drawProjectile(ctx, pr);
     for (const s of this.shots) {
       ctx.save();
@@ -602,7 +671,7 @@ class World {
     const c1 = Math.max(0, Math.floor(cam / T) - 1);
     const c2 = Math.min(this.cols - 1, c1 + Math.ceil(W / T) + 2);
     for (let c = c1; c <= c2; c++) {
-      if (!th.water && this.tile(c, GROUND) === TILE.EMPTY && this.tile(c, ROWS - 1) === TILE.EMPTY) {
+      if (!th.water && !th.lava && this.tile(c, GROUND) === TILE.EMPTY && this.tile(c, ROWS - 1) === TILE.EMPTY) {
         box(ctx, c * T, GROUND * T + 14, T + 0.5, H, 'rgba(25,12,30,0.55)');
       }
       for (let r = 0; r < ROWS; r++) {
@@ -659,6 +728,12 @@ class World {
       drawPotion(ctx, it.type, x, y, 1.2);
     } else if (FOOD.includes(it.type)) {
       drawFood(ctx, it.type, x, y, 1.2);
+    } else if (BEDROCK[it.type]) {
+      ctx.fillStyle = 'rgba(127,214,255,0.4)';
+      ctx.beginPath();
+      ctx.arc(x, y, 24 + Math.sin(this.time * 5) * 3, 0, Math.PI * 2);
+      ctx.fill();
+      drawArmorIcon(ctx, BEDROCK[it.type], x, y, 1.2, true);
     } else if (WEAPONS[it.type] || ARMOR.includes(it.type)) {
       ctx.fillStyle = 'rgba(255,230,120,0.35)';
       ctx.beginPath();
@@ -681,7 +756,42 @@ class World {
   drawProjectile(ctx, pr) {
     ctx.save();
     ctx.translate(pr.x + pr.w / 2, pr.y + pr.h / 2);
-    if (pr.kind === 'bone') {
+    if (pr.wait > 0) ctx.translate(Math.sin(this.time * 60) * 2, 0);
+    if (pr.kind === 'shock') {
+      // a little wall of energy, tallest at the front
+      const [main, light] = pr.el ? ELEMENTS[pr.el].colors : ['#a88a5a', '#e8d8b0'];
+      ctx.scale(Math.sign(pr.vx) || 1, 1);
+      const flick = Math.sin(this.time * 30) * 3;
+      box(ctx, -14, -2, 8, 13, main);
+      box(ctx, -6, -6 - flick, 8, 17 + flick, main);
+      box(ctx, 2, -11 + flick, 10, 22 - flick, main);
+      box(ctx, 4, -9 + flick, 5, 16 - flick, light);
+    } else if (pr.kind === 'gust') {
+      ctx.strokeStyle = 'rgba(230,255,240,0.85)';
+      ctx.lineWidth = 4;
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        ctx.arc(0, -12 + k * 12, 10 + k * 2, pr.spin + k, pr.spin + k + 4);
+        ctx.stroke();
+      }
+    } else if (pr.kind === 'snowball') {
+      ctx.rotate(pr.spin * 0.5);
+      box(ctx, -10, -7, 20, 14, '#e8f2ff');
+      box(ctx, -7, -10, 14, 20, '#e8f2ff');
+      box(ctx, -6, -7, 6, 5, '#ffffff');
+      box(ctx, 3, 3, 5, 4, '#bcd0ea');
+    } else if (pr.kind === 'icicle') {
+      poly(ctx, '#bff6ff', [-11, -13, 11, -13, 0, 15]);
+      poly(ctx, '#ffffff', [-6, -13, 0, -13, -1, 6]);
+      box(ctx, -12, -15, 24, 4, '#7fd6ff');
+    } else if (pr.kind === 'rock') {
+      ctx.rotate(pr.spin * 0.4);
+      box(ctx, -14, -11, 28, 22, '#3a3a42');
+      box(ctx, -11, -14, 22, 28, '#3a3a42');
+      box(ctx, -9, -9, 8, 6, '#5a5a66');
+      box(ctx, 3, 3, 6, 5, '#1e1e24');
+      box(ctx, -2, 5, 4, 3, '#ff7a1f');
+    } else if (pr.kind === 'bone') {
       ctx.rotate(pr.spin);
       box(ctx, -8, -2, 16, 4, '#f2f0e6');
       box(ctx, -11, -4, 5, 8, '#f2f0e6');
@@ -767,10 +877,14 @@ class World {
       box(ctx, 30, 66, 14, 14, '#c9d1d8');
     }
 
-    // armor pieces
+    // armor pieces (bedrock ones show how many hits they have left)
     let ax = 82;
     for (const k of ARMOR) {
-      if (p.armor[k]) { drawArmorIcon(ctx, k, ax, 73, 1); ax += 32; }
+      if (!p.armor[k]) continue;
+      const bed = p.armor.bedrock[k];
+      drawArmorIcon(ctx, k, ax, 73, 1, bed);
+      if (bed) say(ctx, String(p.armor[k]), ax + 12, 86, 14, '#bff6ff');
+      ax += 32;
     }
     for (let i = 0; i < p.armor.extra; i++) { drawArmorIcon(ctx, 'extra', ax, 73, 1); ax += 32; }
     this.drawEffects(ctx);
@@ -790,9 +904,10 @@ class World {
     // boss health bar
     if (this.bossActive && this.boss && !this.boss.dead) {
       const b = this.boss;
-      say(ctx, b.name, W / 2, 24, 24, '#ff6a5a');
+      say(ctx, b.angry ? b.name + ' - ANGRY!' : b.name, W / 2, 24, 24, '#ff6a5a');
       box(ctx, W / 2 - 162, 40, 324, 20, '#2a1410');
-      box(ctx, W / 2 - 160, 42, 320 * Math.max(0, b.hp) / b.maxHp, 16, '#e01e1e');
+      const barColor = b.angry && Math.sin(this.time * 10) > 0 ? '#ff8a1f' : '#e01e1e';
+      box(ctx, W / 2 - 160, 42, 320 * Math.max(0, b.hp) / b.maxHp, 16, barColor);
       box(ctx, W / 2 - 160, 42, 320 * Math.max(0, b.hp) / b.maxHp, 4, '#ff7a6a');
     }
 

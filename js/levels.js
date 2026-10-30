@@ -1,4 +1,4 @@
-// The five levels of the Blockie Forest, plus the bonus rounds.
+// The eight levels of the Blockie Forest, plus the bonus rounds.
 //
 // Levels are built with simple helper calls. The map is 15 tiles tall:
 // row 0 is the top of the screen and row 14 is the bottom.
@@ -105,6 +105,11 @@ class LevelBuilder {
   // A flying dragon ('fire' or 'ice') that floats around column c.
   dragon(c, el = 'fire') {
     this.enemy('dragon', c, { el, r: 9.5 });
+  }
+
+  // An elemental dinosaur: 'fire', 'ice', 'zap' or 'wind'.
+  dino(c, el = 'fire') {
+    this.enemy('dino', c, { el });
   }
 
   deco(type, c, r = GROUND, extra = {}) {
@@ -445,7 +450,7 @@ const LEVELS = [
     signName: 'Forest\nCastle',
     target: 150,
     theme: 'castle',
-    bonus: null,
+    bonus: 'gemrain',
     bossName: 'The Mob Lord',
     width: 214,
     build(b) {
@@ -521,8 +526,252 @@ const LEVELS = [
       b.boss('moblord', 178, 196);
       b.flag(209);
     }
+  },
+
+  // ---------------- Level 6 ----------------
+  {
+    name: 'Dino Valley',
+    signName: 'Dino\nValley',
+    target: 175,
+    theme: 'jungle',
+    bonus: 'stampede',
+    bossName: 'Rex the Dino King',
+    width: 190,
+    build(b) {
+      b.ground(0, 32);
+      b.sign(3, 'Dino Valley!');
+      b.coins(6, 10, 4);
+      b.dino(12, 'fire');
+      b.plat(17, 9, 4);
+      b.coins(17, 8, 4);
+      b.dino(24, 'ice');
+      b.item('apple', 27);
+      b.mob(29, 3);
+
+      // gap at 33-35
+      b.ground(36, 70);
+      b.checkpoint(37);
+      b.item('bedshield', 41);
+      b.sign(43, 'Bedrock: super strong!');
+      b.dino(47, 'zap');
+      b.block(51, 10, 2, 2);
+      b.block(53, 8, 2, 4);
+      b.item('ruby', 53, 7);
+      b.item('gem', 54, 7);
+      b.dino(58, 'wind');
+      b.dragon(61);
+      b.coins(62, 10, 4, 'gem');
+      b.item('bread', 66);
+      b.enemy('zombie', 68);
+
+      // gap at 71-73 with a stepping stone
+      b.block(72, 10);
+      b.ground(74, 112);
+      b.animal('horse', 74, 86);
+      b.dino(78, 'fire');
+      b.item('fireorb', 80);
+      b.checkpoint(84);
+      b.mob(88, 4);
+      b.plat(92, 9, 4);
+      b.coins(92, 8, 4);
+      b.plat(97, 7, 3);
+      b.item('diamond', 98, 6);
+      b.dino(101, 'ice');
+      b.item('jumppot', 104);
+      b.dragon(106, 'ice');
+      b.enemy('skeleton', 109);
+
+      // gap at 113-115
+      b.ground(116, 189);
+      b.dino(120, 'zap');
+      b.item('bedhelmet', 123);
+      b.coins(125, 10, 4);
+      b.dino(130, 'wind');
+      b.mob(134, 4);
+      b.item('healpot', 138);
+      b.coins(140, 10, 3, 'emerald');
+      b.dino(144, 'fire');
+      b.checkpoint(148);
+      b.item('apple', 152);
+      b.boss('dinoking', 155, 174);
+      b.flag(186);
+    }
+  },
+
+  // ---------------- Level 7 ----------------
+  {
+    name: 'Frozen Peaks',
+    signName: 'Frozen\nPeaks',
+    target: 200,
+    theme: 'snow',
+    bonus: 'gemrain',
+    bossName: 'The Big Yeti',
+    width: 190,
+    build(b) {
+      b.ground(0, 30);
+      b.coins(5, 10, 4);
+      b.dino(11, 'ice');
+      b.plat(15, 9, 3);
+      b.coins(15, 8, 3);
+      b.plat(19, 7, 3);
+      b.item('ruby', 20, 6);
+      b.enemy('skeleton', 24);
+      b.item('bread', 28);
+
+      // gap at 31-33
+      b.ground(34, 68);
+      b.checkpoint(35);
+      b.animal('sheep', 38, 46);
+      b.item('iceorb', 40);
+      b.dino(44, 'wind');
+      b.dragon(48, 'ice');
+      b.block(51, 11);
+      b.block(52, 10, 1, 2);
+      b.block(53, 9, 1, 3);
+      b.item('diamond', 53, 8);
+      b.mob(56, 4);
+      b.enemy('robot', 62);
+      b.item('apple', 66);
+
+      // gap at 69-71
+      b.ground(72, 110);
+      b.dino(75, 'ice');
+      b.coins(78, 10, 3, 'gem');
+      b.checkpoint(82);
+      b.item('bedchest', 85);
+      b.enemy('skeleton', 89);
+      b.plat(92, 9, 4);
+      b.coins(92, 8, 4, 'gem');
+      b.dino(96, 'zap');
+      b.dragon(100);
+      b.item('starpot', 103);
+      b.enemy('zombie', 106);
+
+      // gap at 111-113 with a stepping stone
+      b.block(112, 10);
+      b.ground(114, 189);
+      b.dino(118, 'ice');
+      b.mob(122, 5);
+      b.item('zaporb', 126);
+      b.coins(128, 10, 4);
+      b.dino(133, 'wind');
+      b.dragon(136, 'ice');
+      b.coins(139, 10, 2, 'emerald');
+      b.enemy('skeleton', 142);
+      b.checkpoint(147);
+      b.item('carrot', 150);
+      b.item('healpot', 152);
+      b.boss('yeti', 155, 174);
+      b.flag(186);
+    }
+  },
+
+  // ---------------- Level 8 ----------------
+  {
+    name: 'Bedrock Deep',
+    signName: 'Bedrock\nDeep',
+    target: 225,
+    theme: 'deep',
+    bonus: null,
+    bossName: 'The Bedrock Golem',
+    width: 214,
+    build(b) {
+      const R = TILE.ROCK;
+      b.ceiling(0, 213, 2);
+      b.ground(0, 28, R);
+      b.sign(3, 'Watch out for lava!');
+      b.coins(6, 10, 4);
+      b.dino(11, 'fire');
+      b.enemy('spider', 15, { drop: true });
+      b.plat(18, 9, 4);
+      b.coins(18, 8, 4, 'gem');
+      b.enemy('robot', 24);
+      b.item('apple', 27);
+
+      // lava at 29-31
+      b.ground(32, 66, R);
+      b.checkpoint(33);
+      b.item('bedhelmet', 37);
+      b.dino(41, 'zap');
+      b.mob(45, 5);
+      b.block(50, 10, 2, 2, R);
+      b.block(52, 8, 2, 4, R);
+      b.item('diamond', 52, 7);
+      b.item('ruby', 53, 7);
+      b.dragon(56);
+      b.enemy('skeleton', 60);
+      b.item('fireorb', 63);
+
+      // lava at 67-69 with a stepping stone
+      b.block(68, 10, 1, 1, R);
+      b.ground(70, 106, R);
+      b.item('bedshield', 72);
+      b.dino(76, 'fire');
+      b.enemy('robot', 80);
+      b.checkpoint(84);
+      b.mob(88, 5);
+      b.plat(92, 9, 3);
+      b.plat(96, 7, 3);
+      b.coins(96, 6, 3, 'emerald');
+      b.dino(100, 'wind');
+      b.dragon(102, 'ice');
+      b.item('bread', 105);
+
+      // lava at 107-109
+      b.ground(110, 146, R);
+      b.item('zaporb', 112);
+      b.enemy('spider', 115, { drop: true });
+      b.dino(119, 'zap');
+      b.item('bedchest', 122);
+      b.enemy('robot', 126);
+      b.coins(129, 10, 4, 'gem');
+      b.dino(134, 'ice');
+      b.mob(138, 5);
+      b.item('healpot', 143);
+
+      // lava at 147-149
+      b.ground(150, 213, R);
+      b.checkpoint(151);
+      b.item('starpot', 154);
+      b.dino(158, 'fire');
+      b.dragon(161);
+      b.dino(165, 'zap');
+      b.coins(168, 10, 3, 'ruby');
+      b.checkpoint(172);
+      b.item('apple', 175);
+      b.item('magnetpot', 176);
+      b.boss('golem', 178, 196);
+      b.flag(209);
+    }
   }
 ];
+
+// The run-and-grab bonus course (used by Spider Chase and Dino Stampede).
+function chaseCourse(b, cave) {
+  if (cave) b.ceiling(0, 149, 2);
+  b.ground(0, 149);
+  b.spawn(6);
+  for (let i = 0; i < 12; i++) {
+    const c = 14 + i * 10;
+    if (i % 3 === 0) {
+      b.block(c, 11);
+      b.item('gem', c - 1, 9);
+      b.item('gem', c, 8);
+      b.item('gem', c + 1, 9);
+    } else if (i % 3 === 1) {
+      b.plat(c, 9, 4);
+      b.coins(c, 8, 4, 'gem');
+      b.coins(c, 11, 4);
+    } else {
+      b.block(c, 10, 1, 2);
+      b.item('gem', c, 8);
+      b.coins(c + 2, 11, 3);
+    }
+  }
+  b.item('apple', 40);
+  b.item('apple', 90);
+  b.flag(144);
+}
 
 const BONUS = {
   gemrain: {
@@ -540,32 +789,18 @@ const BONUS = {
     name: 'Spider Chase',
     tip: 'Run and grab gems! Spiders are coming!',
     theme: 'cave',
+    chaser: 'spider',
     width: 150,
     time: 25,
-    build(b) {
-      b.ceiling(0, 149, 2);
-      b.ground(0, 149);
-      b.spawn(6);
-      for (let i = 0; i < 12; i++) {
-        const c = 14 + i * 10;
-        if (i % 3 === 0) {
-          b.block(c, 11);
-          b.item('gem', c - 1, 9);
-          b.item('gem', c, 8);
-          b.item('gem', c + 1, 9);
-        } else if (i % 3 === 1) {
-          b.plat(c, 9, 4);
-          b.coins(c, 8, 4, 'gem');
-          b.coins(c, 11, 4);
-        } else {
-          b.block(c, 10, 1, 2);
-          b.item('gem', c, 8);
-          b.coins(c + 2, 11, 3);
-        }
-      }
-      b.item('apple', 40);
-      b.item('apple', 90);
-      b.flag(144);
-    }
+    build(b) { chaseCourse(b, true); }
+  },
+  stampede: {
+    name: 'Dino Stampede',
+    tip: 'Run and grab gems! Dinos are coming!',
+    theme: 'jungle',
+    chaser: 'dino',
+    width: 150,
+    time: 25,
+    build(b) { chaseCourse(b, false); }
   }
 };

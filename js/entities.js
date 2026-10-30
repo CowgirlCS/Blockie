@@ -14,6 +14,10 @@ const WEAPONS = {
   firewand: { name: 'Fire Wand', dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.35, swing: 0.18, kb: 160, shoots: true }
 };
 
+// Bedrock armor is extra tough: each piece blocks this many hits.
+const BEDROCK_HITS = 3;
+const ARMOR_NAMES = { helmet: 'Helmet', chest: 'Chest plate', shield: 'Shield' };
+
 function overlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -66,7 +70,15 @@ class Player {
     this.w = 24;
     this.h = 34;
     this.weapon = Save.data.weapon || 'none';
-    this.armor = { helmet: false, chest: false, shield: false, extra: Save.data.upgrades.armor };
+    // helmet, chest and shield count how many hits they can still block (0 = not wearing it)
+    this.armor = {
+      helmet: 0, chest: 0, shield: 0, extra: Save.data.upgrades.armor,
+      bedrock: { helmet: false, chest: false, shield: false }
+    };
+    const bed = Save.data.upgrades.bedrock;
+    if (bed >= 1) this.wear('shield', true);
+    if (bed >= 2) this.wear('helmet', true);
+    if (bed >= 3) this.wear('chest', true);
     this.respawn(x, feetY);
   }
 
@@ -107,7 +119,16 @@ class Player {
 
   armorCount() {
     const a = this.armor;
-    return (a.helmet ? 1 : 0) + (a.chest ? 1 : 0) + (a.shield ? 1 : 0) + a.extra;
+    return a.helmet + a.chest + a.shield + a.extra;
+  }
+
+  // Put on a piece of armor. Returns false if Blockie already wears a stronger bedrock one.
+  wear(piece, bedrock) {
+    const a = this.armor;
+    if (!bedrock && a.bedrock[piece] && a[piece] > 0) return false;
+    a[piece] = bedrock ? BEDROCK_HITS : 1;
+    a.bedrock[piece] = bedrock;
+    return true;
   }
 
   speed() {
@@ -303,9 +324,9 @@ class Player {
         this.world.sparkle(e.cx, e.cy, '#ffffff');
       }
     }
-    // Bones and dragon breath can be smashed out of the air
+    // Bones, snowballs and dragon breath can be smashed out of the air
     for (const pr of this.world.projectiles) {
-      if ((pr.kind === 'bone' || pr.kind === 'breath') && !pr.gone && overlap(hb, pr)) {
+      if ((pr.kind === 'bone' || pr.kind === 'breath' || pr.kind === 'snowball') && !pr.gone && overlap(hb, pr)) {
         pr.gone = true;
         Sound.play('block');
         this.world.addPoints(1, pr.x, pr.y);
@@ -326,19 +347,28 @@ class Player {
       this.safe = 0.35;
       this.vx = away * 120;
       this.knockT = 0.1;
-      if (src.knockBack) src.knockBack(-away, 300);
+      // a bedrock shield shoves monsters away much harder
+      if (src.knockBack) src.knockBack(-away, this.armor.bedrock.shield ? 600 : 300);
       return true;
     }
 
     if (this.armorCount() > 0) {
       const a = this.armor;
-      let piece;
-      if (a.extra > 0) { a.extra--; piece = 'Gold armor'; }
-      else if (a.chest) { a.chest = false; piece = 'Chest plate'; }
-      else if (a.helmet) { a.helmet = false; piece = 'Helmet'; }
-      else { a.shield = false; piece = 'Shield'; }
+      let text;
+      if (a.extra > 0) {
+        a.extra--;
+        text = 'Gold armor broke!';
+      } else {
+        const piece = a.chest ? 'chest' : a.helmet ? 'helmet' : 'shield';
+        const name = ARMOR_NAMES[piece];
+        a[piece]--;
+        if (!a.bedrock[piece]) text = name + ' broke!';
+        else if (a[piece] > 0) text = 'Bedrock ' + name.toLowerCase() + ' cracked!';
+        else text = 'Bedrock ' + name.toLowerCase() + ' broke!';
+        if (a[piece] === 0) a.bedrock[piece] = false;
+      }
       Sound.play('armor');
-      w.popup(piece + ' broke!', this.cx, this.y - 10, '#d5dde3');
+      w.popup(text, this.cx, this.y - 10, '#d5dde3');
       w.burst(this.cx, this.cy, 10, ['#d5dde3', '#ffffff', '#ffcc22'], 180, 6, 500, 0.6);
       this.invuln = 1.5;
       this.vx = away * 260;
@@ -377,6 +407,9 @@ class Player {
     if (this.world.theme.water) {
       Sound.play('splash');
       this.world.burst(this.cx, GROUND * T + 20, 14, ['#7fc8ff', '#ffffff'], 220, 7, 600, 0.7);
+    } else if (this.world.theme.lava) {
+      Sound.play('fireball');
+      this.world.burst(this.cx, GROUND * T + 20, 14, ELEMENTS.fire.colors, 220, 7, 600, 0.7);
     }
     this.die();
     this.vy = 0;
@@ -497,16 +530,25 @@ class Enemy {
     }
   }
 
+  // Is there a hole just in front of its feet?
+  ledgeAhead() {
+    if (!this.onGround) return false;
+    const fx = this.dir > 0 ? this.x + this.w + 2 : this.x - 2;
+    const below = this.world.tile(Math.floor(fx / T), Math.floor((this.y + this.h + 4) / T));
+    return !isSolid(below) && !isOneWay(below);
+  }
+
   // Walk back and forth, turning around at walls and ledges.
   patrol(speed) {
-    if (this.hitWall) {
-      this.dir *= -1;
-    } else if (this.onGround) {
-      const fx = this.dir > 0 ? this.x + this.w + 2 : this.x - 2;
-      const below = this.world.tile(Math.floor(fx / T), Math.floor((this.y + this.h + 4) / T));
-      if (!isSolid(below) && !isOneWay(below)) this.dir *= -1;
-    }
+    if (this.hitWall || this.ledgeAhead()) this.dir *= -1;
     this.vx = this.dir * speed;
+  }
+
+  // Leave a power orb on the ground (dragons and dinos do this).
+  dropOrb(el) {
+    this.world.items.push({
+      type: el + 'orb', x: this.cx, y: (GROUND - 0.5) * T, phase: 0, taken: false
+    });
   }
 
   damage(dmg, dir, kb) {
@@ -682,10 +724,7 @@ class Robot extends Enemy {
       if (this.st >= 0.8) this.state = 'robot';
     } else {
       this.dir = p.cx < this.cx ? -1 : 1;
-      const fx = this.dir > 0 ? this.x + this.w + 2 : this.x - 2;
-      const below = this.world.tile(Math.floor(fx / T), Math.floor((this.y + this.h + 4) / T));
-      const ledge = this.onGround && !isSolid(below) && !isOneWay(below);
-      this.vx = ledge ? 0 : this.dir * 60;
+      this.vx = this.ledgeAhead() ? 0 : this.dir * 60;
       if (this.hitWall && this.onGround) this.vy = -520;
     }
   }
@@ -800,13 +839,87 @@ class Dragon extends Enemy {
   defeat() {
     if (this.dead) return;
     super.defeat();
-    this.world.items.push({
-      type: this.el + 'orb', x: this.cx, y: (GROUND - 0.5) * T, phase: 0, taken: false
-    });
+    this.dropOrb(this.el);
   }
 
   draw(ctx) {
     drawDragon(ctx, this.cx, this.y + this.h, this.dir, 1, this.t, this.flash > 0, { el: this.el, breath: this.windup > 0 });
+  }
+}
+
+// An elemental dinosaur. It walks up to Blockie, roars, then uses its element:
+// fire and ice dinos breathe, lightning dinos stomp a zap along the ground,
+// and wind dinos blow Blockie away. Grown-up dinos drop a power orb when beaten.
+const DINO_ELEMENTS = ['fire', 'ice', 'zap', 'wind'];
+
+class Dino extends Enemy {
+  constructor(world, x, feetY, opts = {}) {
+    const baby = !!opts.baby;
+    super(world, 'dino', x, feetY, baby ? 30 : 48, baby ? 30 : 50, baby ? 1 : 4, baby ? 4 : 15);
+    this.el = opts.el || 'fire';
+    this.baby = baby;
+    this.scale = baby ? 0.6 : 1;
+    this.kbMul = baby ? 1 : 0.7;
+    this.attackT = 1 + Math.random() * 1.5;
+    this.windup = 0;
+  }
+
+  think(dt) {
+    const p = this.world.player;
+    const dx = p.cx - this.cx;
+    const near = !p.dead && Math.abs(dx) < 400 && Math.abs(p.cy - this.cy) < 140;
+    this.attackT -= dt;
+    if (this.windup > 0) {
+      this.vx = 0;
+      this.windup -= dt;
+      if (this.windup <= 0) this.attack();
+      return;
+    }
+    if (near && !this.baby && this.attackT <= 0) {
+      this.dir = dx < 0 ? -1 : 1;
+      this.windup = 0.6;
+      this.attackT = 2.6 + Math.random() * 1.2;
+      Sound.play('roar');
+      return;
+    }
+    if (near && Math.abs(dx) > 30) {
+      this.dir = dx < 0 ? -1 : 1;
+      this.vx = this.ledgeAhead() ? 0 : this.dir * (this.baby ? 110 : 50);
+    } else {
+      this.patrol(this.baby ? 70 : 35);
+    }
+  }
+
+  attack() {
+    const w = this.world, p = w.player;
+    if (this.el === 'fire' || this.el === 'ice') {
+      const sx = this.cx + this.dir * 30, sy = this.y + 10;
+      const dx = p.cx - sx, dy = p.cy - sy;
+      const len = Math.hypot(dx, dy) || 1;
+      w.projectiles.push({
+        kind: 'breath', el: this.el, x: sx - 9, y: sy - 9, w: 18, h: 18,
+        vx: dx / len * 260, vy: dy / len * 260, g: 0, life: 3, spin: 0
+      });
+      Sound.play('fireball');
+    } else if (this.el === 'zap') {
+      w.shockwave(this.cx + this.dir * 20, this.y + this.h, this.dir, 'zap');
+      w.shake = 0.12;
+      Sound.play('zap');
+    } else {
+      w.gust(this.cx + this.dir * 30, this.cy, this.dir);
+    }
+  }
+
+  defeat() {
+    if (this.dead) return;
+    super.defeat();
+    if (!this.baby) this.dropOrb(this.el);
+  }
+
+  draw(ctx) {
+    drawDino(ctx, this.cx, this.y + this.h, this.dir, this.scale, this.t, this.flash > 0, {
+      el: this.el, roar: this.windup > 0, still: Math.abs(this.vx) < 1
+    });
   }
 }
 
@@ -820,6 +933,7 @@ function makeEnemy(world, e) {
     case 'spider': return new Spider(world, x, y, e.opts);
     case 'mob': return new Mob(world, x, y, e.opts);
     case 'robot': return new Robot(world, x, y);
+    case 'dino': return new Dino(world, x, y, e.opts);
   }
   throw new Error('Unknown enemy: ' + e.type);
 }

@@ -11,10 +11,10 @@ const Save = {
       unlocked: 1,             // how many levels are open
       gems: 0,
       weapon: 'none',          // the weapon Blockie is holding
-      upgrades: { power: 0, speed: 0, jump: 0, armor: 0, points: 0, heart: 0 },
-      levelBest: [0, 0, 0, 0, 0],
-      bonusBest: [0, 0, 0, 0],
-      beaten: [false, false, false, false, false],
+      upgrades: { power: 0, speed: 0, jump: 0, armor: 0, bedrock: 0, points: 0, heart: 0 },
+      levelBest: LEVELS.map(() => 0),
+      bonusBest: LEVELS.slice(1).map(() => 0),
+      beaten: LEVELS.map(() => false),
       muted: false
     };
   },
@@ -25,8 +25,17 @@ const Save = {
       const raw = localStorage.getItem(this.KEY);
       if (raw) {
         const saved = JSON.parse(raw);
+        const fresh = this.fresh();
         Object.assign(this.data, saved);
-        this.data.upgrades = Object.assign(this.fresh().upgrades, saved.upgrades);
+        this.data.upgrades = Object.assign(fresh.upgrades, saved.upgrades);
+        // Older saves had fewer levels: fill in the new ones
+        for (const k of ['levelBest', 'bonusBest', 'beaten']) {
+          const old = Array.isArray(saved[k]) ? saved[k] : [];
+          this.data[k] = fresh[k].map((v, i) => (old[i] === undefined ? v : old[i]));
+        }
+        this.data.beaten.forEach((won, i) => {
+          if (won) this.data.unlocked = Math.max(this.data.unlocked, Math.min(LEVELS.length, i + 2));
+        });
       }
     } catch (e) {
       // Storage is blocked: the game still works, it just won't remember.
