@@ -540,6 +540,347 @@ class Golem extends Boss {
   }
 }
 
+// ---------- The elemental bosses (levels 9 to 11) ----------
+
+// A boss that flies around the room. It floats high up, and every now and then it
+// swoops down low so Blockie can hit it with a sword.
+class FlyingBoss extends Boss {
+  constructor(world, type, x, feetY, w, h, hp, name) {
+    super(world, type, x, feetY, w, h, hp, name);
+    this.kbMul = 0;
+    this.swoopT = 0;
+    this.swoopCool = 5;
+    this.windup = 0;
+    this.moveN = 0;
+    this.move = null;
+  }
+
+  update(dt) {
+    // While waiting it stands on the floor; once the fight starts it flies.
+    this.falls = !this.world.bossActive;
+    super.update(dt);
+  }
+
+  resetPos() {
+    super.resetPos();
+    this.swoopT = 0;
+    this.swoopCool = 5;
+    this.windup = 0;
+  }
+
+  fly(dt, speed) {
+    const L = this.world.arenaX;
+    const groundY = GROUND * T - this.h;
+    this.swoopCool -= dt;
+    if (this.swoopT > 0) this.swoopT -= dt;
+    else if (this.swoopCool <= 0) {
+      this.swoopT = this.angry ? 3 : 3.5;
+      this.swoopCool = this.angry ? 6 : 8;
+    }
+    const low = this.swoopT > 0;
+    const tx = L + W / 2 - this.w / 2 + Math.sin(this.t * speed) * (W / 2 - this.w / 2 - 30);
+    const ty = low ? groundY - 4 : groundY - 190 + Math.sin(this.t * 2) * 14;
+    this.x += (tx - this.x) * Math.min(1, dt * 2.2);
+    this.y += (ty - this.y) * Math.min(1, dt * 2.5);
+    this.vx = 0;
+    this.vy = 0;
+    this.dir = this.world.player.cx < this.cx ? -1 : 1;
+  }
+
+  // Breath balls in a fan aimed at Blockie
+  fan(el, n, speed, kind = 'breath') {
+    const w = this.world, p = w.player;
+    const sx = this.cx + this.dir * this.w * 0.4, sy = this.cy;
+    const base = Math.atan2(p.cy - sy, p.cx - sx);
+    for (let i = 0; i < n; i++) {
+      const a = base + (i - (n - 1) / 2) * 0.22;
+      w.projectiles.push({
+        kind, el, x: sx - 11, y: sy - 11, w: 22, h: 22,
+        vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, g: 0, life: 4, spin: 0
+      });
+    }
+  }
+
+  // Lightning strikes from the sky. A yellow glow shows where they will land.
+  strikes(n) {
+    const w = this.world, L = w.arenaX, px = w.player.cx;
+    for (let i = 0; i < n; i++) {
+      const x = Math.max(L + 20, Math.min(L + W - 20, px + (i - (n - 1) / 2) * 130 + (Math.random() - 0.5) * 30));
+      w.projectiles.push({
+        kind: 'strike', x: x - 16, y: 0, w: 32, h: GROUND * T, vx: 0, vy: 0, g: 0, life: 0.3, spin: 0, wait: 0.9 + i * 0.12
+      });
+    }
+  }
+
+  // Leave a present when beaten
+  reward(type) {
+    this.world.items.push({ type, x: this.cx, y: (GROUND - 1.5) * T, phase: 0, taken: false });
+  }
+}
+
+// Level 9: the Storm King rules the clouds with lightning and wind.
+class StormKing extends FlyingBoss {
+  constructor(world, x, feetY) {
+    super(world, 'stormking', x, feetY, 64, 100, 30, 'The Storm King');
+    this.spawnT = 6;
+  }
+
+  think(dt) {
+    this.fly(dt, this.angry ? 0.7 : 0.5);
+    this.timer -= dt;
+    this.spawnT -= dt;
+    if (this.windup > 0) {
+      this.windup -= dt;
+      if (this.windup <= 0) this.attack();
+    } else if (this.timer <= 0) {
+      this.timer = this.angry ? 1.8 : 2.6;
+      this.windup = 0.6;
+      this.move = ['strikes', 'bolts', 'gust'][this.moveN++ % 3];
+      Sound.play('roar');
+    }
+    if (this.angry && this.spawnT <= 0) {
+      this.spawnT = 8;
+      if (this.minions() < 3) {
+        for (const k of [-1, 1]) {
+          this.summon(new Dino(this.world, this.world.arenaX + W / 2 + k * 260, GROUND * T, { el: k < 0 ? 'zap' : 'wind', baby: true }));
+        }
+      }
+    }
+  }
+
+  attack() {
+    const w = this.world;
+    if (this.move === 'strikes') {
+      this.strikes(this.angry ? 5 : 3);
+    } else if (this.move === 'bolts') {
+      this.fan('zap', this.angry ? 4 : 3, 280);
+      Sound.play('zap');
+    } else {
+      w.gust(this.cx + this.dir * 40, GROUND * T - 24, this.dir);
+      w.gust(this.cx + this.dir * 40, this.cy, this.dir);
+      if (this.angry) this.strikes(2);
+    }
+  }
+
+  defeat() {
+    if (this.dead) return;
+    super.defeat();
+    this.reward('windwand');
+  }
+
+  draw(ctx) {
+    drawStormKing(ctx, this.cx, this.y + this.h, this.dir, 2, this.t, this.flash > 0, {
+      windup: this.windup > 0, angry: this.angry, flying: this.world.bossActive
+    });
+  }
+}
+
+// Level 10: the Elemental Dragon. Every attack is a new element: fire, ice, lightning, earth.
+const DRAGON_BOSS_ELEMENTS = ['fire', 'ice', 'zap', 'earth'];
+
+class ElementDragon extends FlyingBoss {
+  constructor(world, x, feetY) {
+    super(world, 'elemdragon', x, feetY, 110, 84, 34, 'The Elemental Dragon');
+    this.elIndex = 0;
+    this.spawnT = 7;
+  }
+
+  get el() { return DRAGON_BOSS_ELEMENTS[this.elIndex]; }
+
+  think(dt) {
+    this.fly(dt, this.angry ? 0.65 : 0.45);
+    this.timer -= dt;
+    this.spawnT -= dt;
+    if (this.windup > 0) {
+      this.windup -= dt;
+      if (this.windup <= 0) this.attack();
+    } else if (this.timer <= 0) {
+      this.timer = this.angry ? 1.7 : 2.4;
+      this.windup = 0.6;
+      Sound.play('roar');
+    }
+    if (this.angry && this.spawnT <= 0) {
+      this.spawnT = 9;
+      if (this.minions() < 2) {
+        const el = DRAGON_BOSS_ELEMENTS[Math.floor(Math.random() * 4)];
+        const d = new Dragon(this.world, this.world.arenaX + 120 + Math.random() * (W - 240), 9.5 * T, { el, range: 2 });
+        this.summon(d);
+      }
+    }
+  }
+
+  attack() {
+    const el = this.el;
+    if (el === 'earth') {
+      // throws rocks, and when angry, rocks rain down too
+      const p = this.world.player;
+      for (let k = 0; k < (this.angry ? 3 : 2); k++) {
+        const vx = Math.max(-500, Math.min(500, (p.cx - this.cx) / 1.1)) + (k - 0.5) * 100;
+        this.world.projectiles.push({ kind: 'rock', x: this.cx - 14, y: this.cy, w: 28, h: 28, vx, vy: -380, g: 1000, life: 4, spin: 0 });
+      }
+      if (this.angry) this.dropFromSky('rock', 3);
+      Sound.play('throw');
+    } else if (el === 'zap') {
+      this.strikes(this.angry ? 4 : 3);
+    } else {
+      this.fan(el, this.angry ? 5 : 3, 260);
+      if (this.angry && el === 'ice') this.dropFromSky('icicle', 3);
+      Sound.play('fireball');
+    }
+    this.elIndex = (this.elIndex + 1) % DRAGON_BOSS_ELEMENTS.length;
+  }
+
+  defeat() {
+    if (this.dead) return;
+    super.defeat();
+    this.reward('earthwand');
+  }
+
+  draw(ctx) {
+    drawDragon(ctx, this.cx, this.y + this.h, this.dir, 2.4, this.t, this.flash > 0, {
+      el: this.el, breath: this.windup > 0
+    });
+    // a crown, so you know it's the boss
+    ctx.save();
+    ctx.translate(Math.round(this.cx), Math.round(this.y + this.h));
+    ctx.scale(this.dir * 2.4, 2.4);
+    box(ctx, 13, -55, 16, 4, '#ffcc22');
+    box(ctx, 13, -58, 3, 3, '#ffcc22');
+    box(ctx, 19, -58, 3, 3, '#ffcc22');
+    box(ctx, 25, -58, 3, 3, '#ffcc22');
+    ctx.restore();
+  }
+}
+
+// Level 11: the Galaxy Wizard. He teleports, shoots stars, calls meteors
+// and brings monsters of every element.
+class GalaxyWizard extends Boss {
+  constructor(world, x, feetY) {
+    super(world, 'wizard', x, feetY, 56, 104, 50, 'The Galaxy Wizard');
+    this.kbMul = 0.05;
+    this.windup = 0;
+    this.moveN = 0;
+    this.move = null;
+    this.blinkT = 5;
+    this.fade = 0;
+    this.spawnT = 5;
+  }
+
+  resetPos() {
+    super.resetPos();
+    this.windup = 0;
+    this.fade = 0;
+  }
+
+  think(dt) {
+    const w = this.world;
+    this.timer -= dt;
+    this.blinkT -= dt;
+    this.spawnT -= dt;
+    if (this.fade > 0) {
+      // teleporting: vanish, then pop up on the other side of Blockie
+      this.vx = 0;
+      this.fade -= dt;
+      if (this.fade <= 0.25 && !this.moved) {
+        this.moved = true;
+        const L = w.arenaX, px = w.player.cx;
+        const side = px < L + W / 2 ? 1 : -1;
+        this.x = Math.max(L + 10, Math.min(L + W - this.w - 10, px + side * (220 + Math.random() * 120) - this.w / 2));
+        this.y = GROUND * T - this.h - 60;
+        this.vy = 0;
+        w.burst(this.cx, this.cy, 20, ELEMENTS.galaxy.colors, 220, 8, 0, 0.6);
+      }
+      return;
+    }
+    this.facePlayer();
+    if (this.windup > 0) {
+      this.vx = 0;
+      this.windup -= dt;
+      if (this.windup <= 0) this.attack();
+      return;
+    }
+    if (this.onGround) this.vx = this.dir * (this.angry ? 60 : 40);
+    if (this.blinkT <= 0) {
+      this.blinkT = (this.angry ? 3.5 : 5) + Math.random() * 2;
+      this.fade = 0.5;
+      this.moved = false;
+      Sound.play('teleport');
+      w.burst(this.cx, this.cy, 20, ELEMENTS.galaxy.colors, 220, 8, 0, 0.6);
+    } else if (this.timer <= 0) {
+      this.timer = this.angry ? 1.6 : 2.4;
+      this.windup = 0.6;
+      this.move = ['stars', 'meteors', 'stars', 'friends'][this.moveN++ % 4];
+      Sound.play('star');
+    }
+  }
+
+  attack() {
+    const w = this.world, p = w.player;
+    if (this.move === 'stars') {
+      const sx = this.cx + this.dir * 30, sy = this.y + 30;
+      if (this.angry && this.moveN % 2 === 0) {
+        // a big ring of stars
+        for (let i = 0; i < 10; i++) {
+          const a = i * Math.PI / 5;
+          w.projectiles.push({ kind: 'breath', el: 'galaxy', x: sx - 11, y: sy - 11, w: 22, h: 22,
+            vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, g: 0, life: 4, spin: 0 });
+        }
+      } else {
+        const base = Math.atan2(p.cy - sy, p.cx - sx);
+        for (let i = 0; i < (this.angry ? 5 : 3); i++) {
+          const a = base + (i - (this.angry ? 2 : 1)) * 0.25;
+          w.projectiles.push({ kind: 'breath', el: 'galaxy', x: sx - 11, y: sy - 11, w: 22, h: 22,
+            vx: Math.cos(a) * 270, vy: Math.sin(a) * 270, g: 0, life: 4, spin: 0 });
+        }
+      }
+      Sound.play('star');
+    } else if (this.move === 'meteors') {
+      this.dropFromSky('meteor', this.angry ? 6 : 4);
+      w.shake = 0.2;
+      Sound.play('thunder');
+    } else {
+      // calls monsters of every element
+      if (this.minions() < (this.angry ? 4 : 2)) {
+        for (const k of [-1, 1]) {
+          const el = DINO_ELEMENTS[Math.floor(Math.random() * 4)];
+          this.summon(new Dino(w, this.cx + k * 80, GROUND * T, { el, baby: true }));
+        }
+        Sound.play('transform');
+      } else {
+        this.dropFromSky('meteor', 3);
+      }
+    }
+  }
+
+  landed() { if (this.world.bossActive && this.fade <= 0) this.stomp(); }
+
+  damage(dmg, dir, kb) {
+    if (this.fade > 0) return false;   // can't hit him while he teleports
+    return super.damage(dmg, dir, kb);
+  }
+
+  touchPlayer() {
+    if (this.fade > 0) return;
+    super.touchPlayer();
+  }
+
+  defeat() {
+    if (this.dead) return;
+    super.defeat();
+    this.world.items.push({ type: 'galaxyorb', x: this.cx, y: (GROUND - 0.5) * T, phase: 0, taken: false });
+  }
+
+  draw(ctx) {
+    if (this.fade > 0) {
+      ctx.globalAlpha = Math.abs(this.fade - 0.25) * 4;
+    }
+    drawWizard(ctx, this.cx, this.y + this.h, this.dir, 2, this.t, this.flash > 0, {
+      windup: this.windup > 0, angry: this.angry, still: Math.abs(this.vx) < 1
+    });
+    ctx.globalAlpha = 1;
+  }
+}
+
 function makeBoss(world, type, col) {
   const x = (col + 0.5) * T;
   const y = GROUND * T;
@@ -552,6 +893,9 @@ function makeBoss(world, type, col) {
     case 'dinoking': return new DinoKing(world, x, y);
     case 'yeti': return new Yeti(world, x, y);
     case 'golem': return new Golem(world, x, y);
+    case 'stormking': return new StormKing(world, x, y);
+    case 'elemdragon': return new ElementDragon(world, x, y);
+    case 'wizard': return new GalaxyWizard(world, x, y);
   }
   throw new Error('Unknown boss: ' + type);
 }

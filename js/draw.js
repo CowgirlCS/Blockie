@@ -142,6 +142,14 @@ function drawOrb(ctx, el, x, y, s = 1, t = 0) {
     box(ctx, 2, 2, 3, 3, sym);
   } else if (el === 'zap') {
     poly(ctx, sym, [3, -9, -5, 1, 0, 1, -3, 9, 5, -2, 0, -2]);
+  } else if (el === 'earth') {
+    box(ctx, -6, -2, 12, 8, '#5a3a1a');
+    box(ctx, -4, -5, 8, 4, '#3fb53a');
+    box(ctx, -1, -8, 2, 4, '#3fb53a');
+  } else if (el === 'galaxy') {
+    drawStar(ctx, 0, 0, 8, '#ffcc22');
+    box(ctx, 5, -8, 2, 2, sym);
+    box(ctx, -7, 5, 2, 2, sym);
   } else {
     box(ctx, -7, -5, 10, 2, sym);
     box(ctx, 3, -7, 2, 3, sym);
@@ -224,12 +232,160 @@ function drawWeapon(ctx, type) {
       box(ctx, 8, -26, 5, 4, '#5c666d');
       break;
     case 'firewand':
-      box(ctx, -2, -24, 4, 32, '#5a3416');
-      box(ctx, -2, -24, 2, 32, '#7a4a22');
-      box(ctx, -4, -28, 8, 5, '#ffcc22');
-      box(ctx, -5, -37, 10, 10, '#ff4a1f');
-      box(ctx, -3, -35, 4, 4, '#ffe14d');
+    case 'icewand':
+    case 'earthwand':
+    case 'zapwand':
+    case 'windwand':
+    case 'galaxywand': {
+      const galaxy = type === 'galaxywand';
+      box(ctx, -2, -24, 4, 32, galaxy ? '#2a1a5a' : '#5a3416');
+      box(ctx, -2, -24, 2, 32, galaxy ? '#4a3a8a' : '#7a4a22');
+      box(ctx, -4, -28, 8, 5, galaxy ? '#e0e0ff' : '#ffcc22');
+      const col = WANDS[type].color;
+      if (type === 'icewand') {
+        poly(ctx, col, [-6, -28, 6, -28, 0, -44]);
+        poly(ctx, '#ffffff', [-2, -30, 2, -30, 0, -40]);
+      } else if (type === 'earthwand') {
+        box(ctx, -7, -38, 14, 11, '#6a4a2a');
+        box(ctx, -5, -40, 10, 14, '#8a6a3a');
+        box(ctx, -3, -37, 4, 4, '#3fb53a');
+      } else if (type === 'zapwand') {
+        poly(ctx, col, [2, -46, -6, -35, -1, -35, -4, -27, 5, -38, 0, -38]);
+      } else if (type === 'windwand') {
+        box(ctx, -6, -38, 12, 10, col);
+        box(ctx, -8, -35, 6, 2, '#ffffff');
+        box(ctx, 1, -32, 8, 2, '#ffffff');
+      } else if (galaxy) {
+        drawStar(ctx, 0, -35, 9, '#ffcc22');
+        drawStar(ctx, 0, -35, 4, '#ffffff');
+        box(ctx, 6, -44, 2, 2, '#ffb0ff');
+        box(ctx, -8, -40, 2, 2, '#7fd6ff');
+      } else {
+        box(ctx, -5, -37, 10, 10, col);
+        box(ctx, -3, -35, 4, 4, '#ffe14d');
+      }
       break;
+    }
+  }
+}
+
+// A round black bomb with a fuse, drawn at (0, 0).
+function drawBomb(ctx, spin = 0, flash = false) {
+  ctx.save();
+  ctx.rotate(spin);
+  box(ctx, -8, -6, 16, 14, flash ? '#ff3a2a' : '#2a2a34');
+  box(ctx, -6, -8, 12, 18, flash ? '#ff3a2a' : '#2a2a34');
+  box(ctx, -5, -5, 4, 4, '#6a6a7a');
+  box(ctx, -2, -12, 4, 4, '#8a8a96');
+  box(ctx, 1, -15, 2, 4, '#c9a46a');
+  box(ctx, 2, -18, 4, 4, Math.random() < 0.5 ? '#ffe14d' : '#ff8a1f');
+  ctx.restore();
+}
+
+// One of Blockie's magic shots, drawn at (0, 0).
+function drawShot(ctx, s) {
+  if (s.rock) {
+    ctx.rotate(s.spin * 0.5);
+    box(ctx, -13, -10, 26, 20, '#5a3a1a');
+    box(ctx, -10, -13, 20, 26, '#5a3a1a');
+    box(ctx, -9, -8, 18, 16, '#a0703a');
+    box(ctx, -6, -7, 6, 5, '#e0c080');
+    box(ctx, 3, 3, 4, 4, '#3fb53a');
+  } else if (s.gust) {
+    ctx.strokeStyle = 'rgba(230,255,240,0.9)';
+    ctx.lineWidth = 5;
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      ctx.arc(0, -14 + k * 14, 10 + k * 3, s.spin + k, s.spin + k + 4);
+      ctx.stroke();
+    }
+  } else if (s.el === 'galaxy') {
+    ctx.rotate(s.spin * 0.6);
+    const r = s.small ? 7 : 11;
+    drawStar(ctx, 0, 0, r + 3, '#3a1a8a');
+    drawStar(ctx, 0, 0, r, '#ffcc22');
+    drawStar(ctx, 0, 0, r * 0.45, '#ffffff');
+  } else if (s.el === 'zap' && !s.small) {
+    // a crackly bolt that points where it's going
+    ctx.rotate(Math.atan2(s.vy, s.vx));
+    ctx.strokeStyle = '#ffe14d';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0); ctx.lineTo(-6, -6); ctx.lineTo(2, 4); ctx.lineTo(12, -3);
+    ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    drawFireball(ctx, s.el, s.spin, s.small ? 0.65 : 1);
+  }
+}
+
+// The castle goblin. 24 wide at s = 1.
+function drawBomber(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const step = Math.sin(t * 8) * 2;
+  box(ctx, -8 + step, -9, 6, 9, c('#4a3a2a'));
+  box(ctx, 2 - step, -9, 6, 9, c('#4a3a2a'));
+  box(ctx, -11, -22, 22, 14, c('#6a3a8a'));
+  box(ctx, -11, -12, 22, 3, c('#3a1a50'));
+  box(ctx, -9, -34, 18, 13, c('#6ab04a'));
+  box(ctx, -14, -32, 5, 6, c('#6ab04a'));
+  box(ctx, 9, -32, 5, 6, c('#6ab04a'));
+  box(ctx, -2, -30, 4, 4, '#ffe14d');
+  box(ctx, 4, -30, 4, 4, '#ffe14d');
+  box(ctx, 0, -29, 2, 2, '#111111');
+  box(ctx, 6, -29, 2, 2, '#111111');
+  box(ctx, 0, -24, 8, 2, '#2a4a1a');
+  box(ctx, -10, -38, 20, 5, c('#9a2a2a'));
+  box(ctx, -4, -42, 8, 5, c('#9a2a2a'));
+  if (o.windup) {
+    box(ctx, 8, -40, 5, 14, c('#6ab04a'));
+    ctx.save();
+    ctx.translate(10, -46);
+    drawBomb(ctx, 0);
+    ctx.restore();
+  } else {
+    box(ctx, 9, -20, 5, 10, c('#6ab04a'));
+  }
+  ctx.restore();
+}
+
+// A giant castle far away in the sky. Used on the menus, the castle levels and the Castle Sky mod.
+function drawBigCastle(ctx, off, t, dark) {
+  const wall = dark ? '#3a3450' : '#b8bcd0';
+  const shade = dark ? '#2a2440' : '#9aa0b8';
+  const roof = dark ? '#6a2a5a' : '#d7262e';
+  const win = dark ? '#ffcc66' : '#4a5a88';
+  const cx = 480 - (off % 1400);
+  for (const base of [cx, cx + 1400]) {
+    if (base < -500 || base > W + 500) continue;
+    const y = H - 150;
+    // the big wall
+    box(ctx, base - 260, y - 120, 520, 140, wall);
+    for (let k = 0; k < 13; k++) box(ctx, base - 260 + k * 40, y - 136, 22, 16, wall);
+    box(ctx, base - 260, y - 50, 520, 6, shade);
+    // the gate
+    box(ctx, base - 40, y - 70, 80, 90, '#4a2a1a');
+    box(ctx, base - 30, y - 82, 60, 14, '#4a2a1a');
+    for (let k = 0; k < 4; k++) box(ctx, base - 34 + k * 20, y - 66, 4, 86, '#2a1a10');
+    // towers with pointy roofs and flags
+    for (const [tx, tw, th] of [[-260, 70, 240], [190, 70, 240], [-110, 60, 300], [50, 60, 300], [-30, 60, 360]]) {
+      const x = base + tx, top = y + 20 - th;
+      box(ctx, x, top, tw, th, wall);
+      box(ctx, x + tw - 10, top, 10, th, shade);
+      poly(ctx, roof, [x - 10, top, x + tw + 10, top, x + tw / 2, top - 70]);
+      box(ctx, x + tw / 2 - 1, top - 100, 3, 32, '#555555');
+      const wave = Math.sin(t * 4 + tx) * 3;
+      poly(ctx, '#ffcc22', [x + tw / 2 + 2, top - 100, x + tw / 2 + 30, top - 92 + wave, x + tw / 2 + 2, top - 84]);
+      for (let k = 0; k < Math.floor(th / 70); k++) {
+        box(ctx, x + tw / 2 - 7, top + 30 + k * 60, 14, 22, win);
+        box(ctx, x + tw / 2 - 7, top + 30 + k * 60, 14, 6, roof);
+      }
+    }
   }
 }
 
@@ -322,6 +478,8 @@ function drawBlockie(ctx, x, y, o) {
     ctx.translate(0, 18);
   }
   ctx.scale(o.facing || 1, 1);
+  // Rainbow Blockie mod: the colors keep changing
+  if (o.rainbow !== null && o.rainbow !== undefined) ctx.filter = `hue-rotate(${Math.round(o.rainbow * 240) % 360}deg)`;
 
   if (o.boost) {
     box(ctx, -26, -26, 10, 3, 'rgba(255,255,255,0.7)');
@@ -362,6 +520,13 @@ function drawBlockie(ctx, x, y, o) {
   }
 
   // head (red helmet with a visor and friendly eyes)
+  ctx.save();
+  if (o.bighead) {
+    // Big Head mod: grow the head from the neck
+    ctx.translate(0, -24);
+    ctx.scale(1.8, 1.8);
+    ctx.translate(0, 24);
+  }
   box(ctx, -10, -39, 20, 16, '#e0342f');
   box(ctx, -10, -39, 20, 3, '#ff6a5a');
   box(ctx, -3, -33, 13, 6, '#2a1418');
@@ -382,6 +547,7 @@ function drawBlockie(ctx, x, y, o) {
   } else {
     box(ctx, -2, -43, 4, 4, '#b01818');
   }
+  ctx.restore();
 
   // arm and weapon
   const weapon = o.weapon || 'none';
@@ -389,7 +555,7 @@ function drawBlockie(ctx, x, y, o) {
   let ang = 0.35, hx = 8, hy = -16;
   if (sw >= 0) {
     if (weapon === 'spear') { ang = Math.PI / 2; hx = 4 + Math.sin(sw * Math.PI) * 24; hy = -18; }
-    else if (weapon === 'firewand') { ang = 1.35; hx = 10; hy = -20; }
+    else if (WANDS[weapon]) { ang = 1.35; hx = 10; hy = -20; }
     else if (weapon === 'none') { hx = 8 + Math.sin(sw * Math.PI) * 12; hy = -18; }
     else ang = -1.4 + sw * 3.3;
   } else if (weapon === 'spear') {
@@ -589,14 +755,22 @@ function drawMob(ctx, x, y, dir, s, t, flash, o = {}) {
   ctx.restore();
 }
 
-// Dragons fly. At s = 1 they are about 52 wide. o.el picks the colors: 'fire' or 'ice'.
+// body, dark, belly, wing
+const DRAGON_COLORS = {
+  fire:   ['#d7262e', '#9a1414', '#ffcc22', '#ff7a3a'],
+  ice:    ['#4aa8ff', '#2a6ac0', '#e0f6ff', '#9ad8ff'],
+  zap:    ['#f0c020', '#a07a00', '#fff3a0', '#5a4aff'],
+  wind:   ['#4cc08a', '#2a7a54', '#d8ffe8', '#a8f0d0'],
+  earth:  ['#a0703a', '#5a3a1a', '#e0c080', '#3fb53a'],
+  galaxy: ['#6a3ac0', '#3a1a8a', '#ffb0ff', '#b05aff']
+};
+
+// Dragons fly. At s = 1 they are about 52 wide. o.el picks the colors.
 function drawDragon(ctx, x, y, dir, s, t, flash, o = {}) {
   const c = (col) => (flash ? '#ffffff' : col);
   const ice = o.el === 'ice';
-  const body = ice ? '#4aa8ff' : '#d7262e';
-  const dark = ice ? '#2a6ac0' : '#9a1414';
-  const belly = ice ? '#e0f6ff' : '#ffcc22';
-  const wing = ice ? '#9ad8ff' : '#ff7a3a';
+  const k = DRAGON_COLORS[o.el] || DRAGON_COLORS.fire;
+  const body = k[0], dark = k[1], belly = k[2], wing = k[3];
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y));
   ctx.scale(dir * s, s);
@@ -763,6 +937,91 @@ function drawGolem(ctx, x, y, dir, s, t, flash, o = {}) {
   box(ctx, -7, -56, 5, 4, o.angry ? '#ff3a2a' : '#ffe14d');
   box(ctx, 3, -56, 5, 4, o.angry ? '#ff3a2a' : '#ffe14d');
   box(ctx, -1, -66, 6, 5, B.gem);
+  ctx.restore();
+}
+
+// The Storm King: a cloud giant with a lightning crown. 32 wide at s = 1.
+function drawStormKing(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const puff = Math.sin(t * 4) * 1.5;
+  // a storm cloud instead of legs
+  if (o.flying) {
+    box(ctx, -20, -12 - puff, 40, 12, c('#6a7488'));
+    box(ctx, -14, -18, 28, 8, c('#8a94a8'));
+    if (Math.sin(t * 13) > 0.6) poly(ctx, '#ffe14d', [-4, -4, 2, -4, -2, 6, 4, 6, -6, 18, -2, 8, -6, 8]);
+  } else {
+    box(ctx, -10, -12, 8, 12, c('#4a4a6a'));
+    box(ctx, 2, -12, 8, 12, c('#4a4a6a'));
+  }
+  // robe and cape
+  box(ctx, -18, -40, 6, 28, c('#2a3a8a'));
+  box(ctx, -14, -42, 28, 30, c('#3a5ac0'));
+  box(ctx, -14, -42, 28, 4, c('#6a8ae0'));
+  box(ctx, -3, -40, 6, 28, c('#ffe14d'));
+  box(ctx, -14, -24, 28, 3, c('#ffe14d'));
+  // arm holding a lightning staff
+  const up = o.windup ? -14 : 0;
+  box(ctx, 12, -40 + up, 6, 16, c('#3a5ac0'));
+  box(ctx, 17, -60 + up, 3, 40, '#9aa6ae');
+  poly(ctx, '#ffe14d', [18, -76 + up, 12, -64 + up, 17, -64 + up, 14, -56 + up, 24, -68 + up, 19, -68 + up]);
+  // head with a big cloud beard
+  box(ctx, -9, -56, 18, 14, c('#ffd8b0'));
+  box(ctx, -12, -48, 24, 12, c('#e8eef8'));
+  box(ctx, -8, -38, 16, 6, c('#e8eef8'));
+  box(ctx, -4, -53, 3, 3, o.angry ? '#ff3a2a' : '#2a6ad0');
+  box(ctx, 4, -53, 3, 3, o.angry ? '#ff3a2a' : '#2a6ad0');
+  if (o.angry) {
+    box(ctx, -6, -56, 6, 2, '#2a2a3a');
+    box(ctx, 3, -56, 6, 2, '#2a2a3a');
+  }
+  // crown with lightning points
+  box(ctx, -10, -62, 20, 6, '#ffcc22');
+  poly(ctx, '#ffe14d', [-10, -62, -6, -72, -4, -62]);
+  poly(ctx, '#ffe14d', [-2, -62, 1, -76, 4, -62]);
+  poly(ctx, '#ffe14d', [5, -62, 9, -72, 10, -62]);
+  box(ctx, -1, -60, 3, 3, '#7fd6ff');
+  ctx.restore();
+}
+
+// The Galaxy Wizard: a tall wizard in a starry robe. 28 wide at s = 1.
+function drawWizard(ctx, x, y, dir, s, t, flash, o = {}) {
+  const c = (col) => (flash ? '#ffffff' : col);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(dir * s, s);
+  const step = o.still ? 0 : Math.sin(t * 6) * 2;
+  box(ctx, -8 + step, -4, 7, 4, c('#2a1a4a'));
+  box(ctx, 2 - step, -4, 7, 4, c('#2a1a4a'));
+  // robe with stars
+  poly(ctx, c('#3a1a8a'), [-14, -4, 14, -4, 9, -38, -9, -38]);
+  box(ctx, -9, -38, 18, 4, c('#5a3ac0'));
+  for (const [sx, sy] of [[-6, -12], [5, -20], [-3, -28], [7, -8]]) {
+    drawStar(ctx, sx, sy, 2.5 + Math.abs(Math.sin(t * 3 + sx)) * 1.2, '#ffcc22');
+  }
+  // arm and star staff
+  const up = o.windup ? -10 : 0;
+  box(ctx, 8, -36 + up, 6, 14, c('#3a1a8a'));
+  box(ctx, 13, -54 + up, 3, 52, '#8a5a2b');
+  const glow = 6 + Math.sin(t * 8) * 1.5;
+  ctx.fillStyle = 'rgba(255,176,255,0.45)';
+  ctx.beginPath();
+  ctx.arc(14.5, -58 + up, glow + 4, 0, Math.PI * 2);
+  ctx.fill();
+  drawStar(ctx, 14.5, -58 + up, glow, '#ffe14d');
+  // face and beard
+  box(ctx, -6, -48, 12, 10, c('#ffd8b0'));
+  box(ctx, -7, -42, 14, 14, c('#f0f0ff'));
+  box(ctx, -4, -30, 8, 4, c('#f0f0ff'));
+  box(ctx, -3, -46, 2, 2, o.angry ? '#ff3a2a' : '#5a2a9a');
+  box(ctx, 3, -46, 2, 2, o.angry ? '#ff3a2a' : '#5a2a9a');
+  // the tall hat
+  box(ctx, -11, -50, 22, 4, c('#5a3ac0'));
+  poly(ctx, c('#3a1a8a'), [-8, -50, 8, -50, 3, -72, -6, -80]);
+  drawStar(ctx, -1, -60, 3, '#ffcc22');
+  box(ctx, -8, -82, 4, 4, '#ffcc22');
   ctx.restore();
 }
 
@@ -1048,6 +1307,33 @@ const THEMES = {
     stone: '#4a4a52', stoneDark: '#2e2e36',
     decor: ['crystal', 'lavarock', 'crystal', 'rocks'], density: 0.3
   }),
+  // The menus: green grass in front of a giant castle
+  grounds: Object.assign({}, BASE_THEME, {
+    sun: true, clouds: true, bigCastle: true, nearShape: 'trees', far: '#a8d898',
+    decor: ['flower', 'grass'], density: 0.3
+  }),
+  // Level 9: a stormy castle up in the clouds
+  storm: Object.assign({}, BASE_THEME, {
+    sky: ['#3a4a6a', '#8a9ab8'], far: '#6a7a98', near: '#5a6a88',
+    farShape: 'castle', nearShape: 'wall', clouds: true, storm: true, bigCastle: true,
+    groundTile: 4, brick: '#8a8aa0', brickDark: '#6a6a80', brickLight: '#aaaabf',
+    decor: ['torch', 'banner', 'barrel', 'torch'], density: 0.3
+  }),
+  // Level 10: a castle with lava instead of water
+  lavakeep: Object.assign({}, BASE_THEME, {
+    sky: ['#4a1a1a', '#ff8a4a'], far: '#6a3030', near: '#5a3a3a',
+    farShape: 'volcano', nearShape: 'wall', lava: '#ff5a1f', bigCastle: true,
+    groundTile: 4, brick: '#7a5a5a', brickDark: '#5a3a3a', brickLight: '#9a7a70',
+    decor: ['torch', 'lavarock', 'banner', 'crystal'], density: 0.3
+  }),
+  // Level 11: a tower out in space
+  galaxy: Object.assign({}, BASE_THEME, {
+    sky: ['#0a0420', '#3a1a6a'], far: '#2a1a5a', near: '#3a2a6a',
+    farShape: 'crystals', nearShape: null, stars: true, planet: true, bigCastle: true,
+    groundTile: 4, brick: '#5a4a8a', brickDark: '#3a2a6a', brickLight: '#8a7ac0',
+    stone: '#6a5aa0', stoneDark: '#4a3a80',
+    decor: ['crystal', 'torch', 'crystal', 'banner'], density: 0.3
+  }),
   bonus: Object.assign({}, BASE_THEME, {
     sky: ['#ff9ad5', '#ffe6a8'], far: '#ffc0e0', near: '#9be08a',
     rainbow: true, clouds: true, nearShape: null,
@@ -1109,7 +1395,25 @@ function drawBackdrop(ctx, th, camX, t) {
       box(ctx, k * bw - off, 0, bw + 1, h, th.far);
     }
   }
+  if (th.stars) {
+    for (let k = 0; k < 90; k++) {
+      const a = 0.3 + 0.7 * Math.abs(Math.sin(t * 1.5 + k * 1.7));
+      const sx = ((hash(k) * W - camX * 0.03) % W + W) % W;
+      box(ctx, sx, hash(k + 40) * 380, k % 7 === 0 ? 4 : 2, k % 7 === 0 ? 4 : 2, `rgba(255,255,255,${a})`);
+    }
+  }
+  if (th.planet) {
+    box(ctx, 720, 50, 110, 110, '#b05aff');
+    box(ctx, 730, 60, 40, 30, '#d08aff');
+    box(ctx, 780, 120, 30, 20, '#8a3ad0');
+    box(ctx, 680, 100, 190, 10, 'rgba(255,200,120,0.8)');
+  }
+  if (th.storm && Math.sin(t * 0.9) > 0.985) {
+    // a flash of lightning far away
+    box(ctx, 0, 0, W, H, 'rgba(255,255,230,0.35)');
+  }
   hillLayer(ctx, th.far, camX * 0.15, 230, 120, 60, 1.3, th.farShape);
+  if (th.bigCastle || modOn('castle')) drawBigCastle(ctx, camX * 0.1, t, th.dark || th.stars || th.storm);
   if (th.snow) {
     // snowflakes drifting down
     for (let k = 0; k < 50; k++) {

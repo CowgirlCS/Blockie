@@ -121,9 +121,10 @@ class TitleScreen {
   }
 
   draw(ctx) {
-    drawScene(ctx, 'meadow', this.t * 40, this.t);
+    drawScene(ctx, 'grounds', this.t * 40, this.t);
     drawLogo(ctx, W / 2, 50, 18, this.t);
-    drawBlockie(ctx, 190, 468, { facing: 1, walk: this.t * 200, weapon: 'sword', armor: { shield: true } });
+    drawBlockie(ctx, 190, 468, { facing: 1, walk: this.t * 200, weapon: 'galaxywand', armor: { shield: true } });
+    drawPet(ctx, 'puppy', 140, 468, 1, this.t, { walk: true });
     drawElephant(ctx, 780, 468, -1, this.t, false);
     drawZombie(ctx, 640, 468, -1, 1, this.t, false);
     drawSheep(ctx, 330, 468, 1, this.t, false);
@@ -155,12 +156,20 @@ class TitleScreen {
 class SelectScreen {
   constructor(cursor = 0) {
     this.cursor = Math.max(0, Math.min(LEVELS.length - 1, cursor));
-    this.row = 0;   // 0 = level signs, 1 = castle shop button
+    this.row = 0;      // 0 = level signs, 1 = the buttons at the top
+    this.button = 0;   // 0 = shop, 1 = pets, 2 = mods
     this.t = 0;
     this.bx = this.signX(this.cursor);
+    this.scroll = this.scrollFor(this.cursor);
   }
 
   signX(i) { return 88 + i * 112; }
+
+  // The map is wider than the screen, so it slides to keep the picked sign in view.
+  scrollFor(i) {
+    const max = this.signX(LEVELS.length - 1) + 88 - W;
+    return Math.max(0, Math.min(max, this.signX(i) - W / 2));
+  }
 
   update(dt) {
     this.t += dt;
@@ -170,16 +179,22 @@ class SelectScreen {
     if (this.row === 0) {
       if (Input.hit('left') && this.cursor > 0) { this.cursor--; Sound.play('menu'); }
       if (Input.hit('right') && this.cursor < LEVELS.length - 1) { this.cursor++; Sound.play('menu'); }
+    } else {
+      if (Input.hit('left') && this.button > 0) { this.button--; Sound.play('menu'); }
+      if (Input.hit('right') && this.button < 2) { this.button++; Sound.play('menu'); }
     }
     const target = this.signX(this.cursor);
     this.walking = Math.abs(target - this.bx) > 2;
     this.facing = target < this.bx ? -1 : 1;
     this.bx += Math.sign(target - this.bx) * Math.min(Math.abs(target - this.bx), 500 * dt);
+    this.scroll += (this.scrollFor(this.cursor) - this.scroll) * Math.min(1, dt * 6);
 
     if (Input.hit('enter')) {
       if (this.row === 1) {
         Sound.play('select');
-        Game.go(new ShopScreen(this.cursor));
+        if (this.button === 0) Game.go(new ShopScreen(this.cursor));
+        else if (this.button === 1) Game.go(new PetScreen(this.cursor));
+        else Game.go(new ModScreen(this.cursor));
       } else if (this.cursor < Save.data.unlocked) {
         Sound.play('select');
         Game.go(new IntroScreen(this.cursor));
@@ -190,7 +205,7 @@ class SelectScreen {
   }
 
   draw(ctx) {
-    drawScene(ctx, 'meadow', 0, this.t);
+    drawScene(ctx, 'grounds', this.scroll * 0.5, this.t);
     say(ctx, 'The Blockie Forest', W / 2, 40, 42, '#ff4a3d');
 
     // gems and total points
@@ -199,13 +214,19 @@ class SelectScreen {
     drawGem(ctx, W - 34 - ctx.measureText(gems).width, 36, 1.1);
     say(ctx, `★ ${Save.totalScore()}`, 16, 36, 26, '#ffe14d', 'left');
 
-    // castle shop button
-    const shopSel = this.row === 1;
-    box(ctx, W / 2 - 130, 76, 260, 48, '#2a1410');
-    box(ctx, W / 2 - 127, 79, 254, 42, shopSel ? '#d7262e' : '#6a5a5a');
-    say(ctx, 'Castle Shop', W / 2, 100, 26, '#ffffff');
+    // buttons: castle shop, pet house, mods
+    ['Castle Shop', 'Pet House', 'Mods'].forEach((label, i) => {
+      const bx = W / 2 + (i - 1) * 230;
+      const sel = this.row === 1 && this.button === i;
+      if (sel) box(ctx, bx - 108, 72, 216, 56, '#ffe14d');
+      box(ctx, bx - 104, 76, 208, 48, '#2a1410');
+      box(ctx, bx - 101, 79, 202, 42, sel ? '#d7262e' : '#6a5a5a');
+      say(ctx, label, bx, 100, 24, '#ffffff');
+    });
 
     // the level signs
+    ctx.save();
+    ctx.translate(-Math.round(this.scroll), 0);
     for (let i = 0; i < LEVELS.length; i++) {
       const x = this.signX(i);
       const open = i < Save.data.unlocked;
@@ -238,8 +259,14 @@ class SelectScreen {
       walk: this.walking ? this.t * 300 : 0,
       weapon: Save.data.weapon
     });
+    if (Save.data.pet) {
+      const flies = Save.data.pet === 'babydragon';
+      drawPet(ctx, Save.data.pet, this.bx - 18, flies ? 420 + Math.sin(this.t * 3) * 6 : 468,
+        this.walking ? this.facing : 1, this.t, { walk: this.walking });
+    }
+    ctx.restore();
 
-    say(ctx, '← → pick   ↑ shop   Enter = go', W / 2, H - 22, 20, '#ffffff');
+    say(ctx, '← → pick   ↑ shop, pets, mods   Enter = go', W / 2, H - 22, 20, '#ffffff');
   }
 }
 
@@ -477,7 +504,8 @@ const SHOP = [
   { id: 'armor', name: 'Gold Armor', desc: 'Blocks 1 hit every level', costs: [15, 30] },
   { id: 'bedrock', name: 'Bedrock Armor', desc: 'Start levels in bedrock armor', costs: [30, 45, 60] },
   { id: 'points', name: 'Point Star', desc: 'More points', costs: [20, 40] },
-  { id: 'heart', name: 'Extra Heart', desc: '+1 heart', costs: [25, 50] }
+  { id: 'heart', name: 'Extra Heart', desc: '+1 heart', costs: [25, 50] },
+  { id: 'bombs', name: 'Bomb Bag', desc: '+2 bombs every level', costs: [10, 20, 30] }
 ];
 
 function drawShopIcon(ctx, id, x, y) {
@@ -517,6 +545,10 @@ function drawShopIcon(ctx, id, x, y) {
       break;
     case 'heart':
       drawHeart(ctx, -14, -12, 4, true);
+      break;
+    case 'bombs':
+      ctx.scale(1.2, 1.2);
+      drawBomb(ctx, 0);
       break;
   }
   ctx.restore();
@@ -589,7 +621,7 @@ class ShopScreen {
     drawGem(ctx, W - 130 - ctx.measureText(gems).width, 44, 1.3);
 
     const top = 104;
-    const gap = 48;
+    const gap = 44;
     for (let i = 0; i <= SHOP.length; i++) {
       const y = top + i * gap;
       const sel = i === this.cursor;
@@ -637,7 +669,7 @@ class EndingScreen {
   }
 
   draw(ctx) {
-    drawScene(ctx, 'castle', this.t * 20, this.t);
+    drawScene(ctx, 'grounds', this.t * 20, this.t);
     drawConfetti(ctx, this.t);
     drawLogo(ctx, W / 2, 30, 12, this.t);
     drawPanel(ctx, W / 2 - 340, 120, 680, 230);
@@ -655,5 +687,7 @@ class EndingScreen {
     drawHorse(ctx, 220, 468, 1, this.t, true);
     drawChicken(ctx, W / 2 + 20, 468, 1, this.t, true);
     drawCow(ctx, 790, 468, -1, this.t, true);
+    drawPet(ctx, 'babydragon', W / 2 - 110, 420 + Math.sin(this.t * 3) * 8, 1, this.t, {});
+    drawPet(ctx, 'kitty', W / 2 - 20, 468, -1, this.t, {});
   }
 }

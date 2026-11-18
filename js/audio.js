@@ -96,6 +96,14 @@ const Sound = {
       case 'pig': this.tone(180, 0.1, { to: 140, vol: 0.08 }); this.tone(200, 0.12, { to: 150, vol: 0.08, delay: 0.15 }); break;
       case 'cow': this.tone(200, 0.7, { type: 'sawtooth', to: 140, vol: 0.07 }); break;
       case 'horse': [900, 1000, 850, 950, 700, 800, 500].forEach((f, i) => this.tone(f, 0.06, { type: 'sawtooth', vol: 0.04, delay: i * 0.05 })); break;
+      case 'boom': this.tone(120, 0.5, { type: 'sawtooth', to: 30, vol: 0.16 }); this.noise(0.5, { freq: 300, vol: 0.35 }); break;
+      case 'fuse': this.noise(0.1, { freq: 5000, vol: 0.05 }); break;
+      case 'rock': this.tone(150, 0.15, { type: 'square', to: 70, vol: 0.1 }); this.noise(0.12, { freq: 500, vol: 0.15 }); break;
+      case 'star': [1200, 1600, 2000].forEach((f, i) => this.tone(f, 0.08, { type: 'sine', vol: 0.08, delay: i * 0.04 })); break;
+      case 'woof': this.tone(300, 0.08, { type: 'sawtooth', to: 200, vol: 0.08 }); this.tone(320, 0.1, { type: 'sawtooth', to: 180, vol: 0.08, delay: 0.14 }); break;
+      case 'meow': this.tone(700, 0.3, { type: 'triangle', to: 500, vol: 0.08 }); break;
+      case 'thunder': this.noise(0.6, { freq: 150, vol: 0.35 }); this.tone(1800, 0.1, { to: 200, vol: 0.06 }); break;
+      case 'teleport': this.tone(300, 0.3, { type: 'sine', to: 1500, vol: 0.1 }); break;
       case 'chicken': this.tone(900, 0.05, { vol: 0.05 }); this.tone(1000, 0.05, { vol: 0.05, delay: 0.08 }); this.tone(1400, 0.12, { type: 'triangle', to: 900, vol: 0.06, delay: 0.16 }); break;
     }
   }

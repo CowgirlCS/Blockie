@@ -14,7 +14,8 @@ const PICKUP_TEXT = {
   spear: 'Spear! It pokes far',
   axe: 'Battle Axe! Big hits',
   mace: 'Mace! Bonk them back',
-  firewand: 'Fire Wand! SPACE shoots fire',
+  bomb: 'Bomb! Press B to throw',
+  bombs: '3 Bombs! Press B to throw',
   helmet: 'Helmet! Blocks 1 hit',
   chest: 'Chest Plate! Blocks 1 hit',
   shield: 'Shield! Hold ↓ to block'
@@ -44,6 +45,7 @@ class World {
     this.projectiles = [];   // things monsters throw at Blockie
     this.shots = [];         // Blockie's fireballs
     this.bolts = [];         // lightning flashes
+    this.bombs = [];         // Blockie's bombs
     this.particles = [];
     this.popups = [];
 
@@ -74,6 +76,8 @@ class World {
 
     this.spawn = { x: b.spawnCol * T + 6, y: GROUND * T };
     this.player = new Player(this, this.spawn.x, this.spawn.y);
+    const petType = Save.data.pet;
+    this.pet = petType && PETS[petType] && Save.data.pets.includes(petType) ? new Pet(this, petType) : null;
 
     this.time = 0;
     this.shake = 0;
@@ -185,6 +189,56 @@ class World {
     Sound.play('swing');
   }
 
+  // BOOM! Hurts every monster close by (but never Blockie) and smashes things in the air.
+  explode(x, y, r = 95, dmg = 4) {
+    this.shake = Math.max(this.shake, 0.35);
+    Sound.play('boom');
+    this.burst(x, y, 26, ['#ff5a1f', '#ffe14d', '#ffffff', '#c02010'], 320, 11, 0, 0.6);
+    this.burst(x, y, 14, ['#5a5a66', '#8a8a96'], 180, 12, -80, 1);
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      const d = Math.hypot(e.cx - x, e.cy - y);
+      if (d < r + Math.max(e.w, e.h) / 2) {
+        const dir = e.cx < x ? -1 : 1;
+        if (e.isBoss) e.iframe = 0;   // bosses always feel a bomb
+        e.damage(dmg + Save.data.upgrades.power, dir, 380);
+      }
+    }
+    for (const pr of this.projectiles) {
+      if (Math.hypot(pr.x + pr.w / 2 - x, pr.y + pr.h / 2 - y) < r) pr.gone = true;
+    }
+  }
+
+  updateBombs(dt) {
+    for (const b of this.bombs) {
+      b.fuse -= dt;
+      b.spin += dt * (b.onGround ? 2 : 10);
+      if (!b.onGround) b.vy = Math.min(MAX_FALL, b.vy + GRAVITY * dt);
+      const wasGround = b.onGround;
+      moveBody(this, b, dt);
+      if (b.onGround) b.vx *= Math.pow(0.02, dt);
+      if (b.onGround && !wasGround) Sound.play('fuse');
+      // a bomb that touches a monster blows up right away
+      let touch = false;
+      for (const e of this.enemies) if (!e.dead && overlap(b, e)) touch = true;
+      if (b.fuse <= 0 || touch || b.y > ROWS * T) {
+        b.gone = true;
+        if (b.y <= ROWS * T) this.explode(b.x + b.w / 2, b.y + b.h / 2);
+      } else if (Math.random() < 0.5) {
+        this.burst(b.x + b.w / 2 + 6, b.y - 2, 1, ['#ffe14d', '#ff8a1f'], 60, 4, -100, 0.3);
+      }
+    }
+    this.bombs = this.bombs.filter((b) => !b.gone);
+  }
+
+  // A monster bomb goes off: it can hurt Blockie.
+  enemyBlast(x, y) {
+    Sound.play('boom');
+    this.shake = Math.max(this.shake, 0.25);
+    this.burst(x, y, 20, ['#ff5a1f', '#ffe14d', '#ffffff'], 260, 9, 0, 0.5);
+    this.projectiles.push({ kind: 'blast', x: x - 40, y: y - 40, w: 80, h: 80, vx: 0, vy: 0, g: 0, life: 0.15, spin: 0 });
+  }
+
   // ---------- lives ----------
 
   afterDeath() {
@@ -198,6 +252,8 @@ class World {
     this.player.invuln = 2;
     this.projectiles = [];
     this.shots = [];
+    this.bombs = [];
+    if (this.pet) this.pet.jumpToPlayer();
     if (this.boss && !this.boss.dead) {
       this.bossActive = false;
       this.camMin = 0;
@@ -233,6 +289,7 @@ class World {
     for (const a of this.animals) a.update(dt);
     p.update(dt);
     if (this.done) return;
+    if (this.pet) this.pet.update(dt);
 
     // Start the boss fight when Blockie walks into the boss room
     if (this.boss && !this.boss.dead && !this.bossActive && !p.dead && p.x > this.arenaX + 3 * T) {
@@ -257,6 +314,7 @@ class World {
 
     this.updateProjectiles(dt);
     this.updateShots(dt);
+    this.updateBombs(dt);
     this.updateItems(dt);
     this.updateCheckpoints();
     this.updateFlag(dt);
@@ -306,8 +364,21 @@ class World {
       pr.spin += dt * 12;
       const mx = pr.x + pr.w / 2, my = pr.y + pr.h / 2;
       const t = this.tile(Math.floor(mx / T), Math.floor(my / T));
-      if (isSolid(t) || (pr.kind === 'web' && isOneWay(t))) {
+      if (pr.kind === 'strike') {
+        // lightning from the sky: flashes for a moment, then it's gone
+        if (!pr.boomed) {
+          pr.boomed = true;
+          this.shake = Math.max(this.shake, 0.15);
+          Sound.play('thunder');
+          this.burst(mx, GROUND * T, 12, ELEMENTS.zap.colors, 200, 7, 300, 0.5);
+        }
+      } else if (pr.kind === 'ebomb' && (isSolid(t) || isOneWay(t) || pr.life <= 0 || (!p.dead && overlap(pr, p)))) {
         pr.gone = true;
+        this.enemyBlast(mx, my);
+        continue;
+      } else if (isSolid(t) || (pr.kind === 'web' && isOneWay(t))) {
+        pr.gone = true;
+        if (pr.kind === 'meteor') this.burst(mx, my, 12, ELEMENTS.galaxy.colors, 200, 8, 400, 0.6);
         if (pr.kind === 'web') this.burst(mx, my, 6, ['#ffffff'], 80, 5, 0, 0.4);
         if (pr.kind === 'breath') this.burst(mx, my, 6, ELEMENTS[pr.el].colors, 100, 5, 0, 0.4);
         if (pr.kind === 'snowball' || pr.kind === 'icicle') this.burst(mx, my, 8, ['#ffffff', '#bff6ff'], 140, 6, 300, 0.5);
@@ -329,7 +400,7 @@ class World {
         // Star Potion: nothing can hurt Blockie
         pr.gone = true;
         this.sparkle(mx, my, '#ffe14d');
-      } else if (p.blocking && fromFront && p.armor.bedrock.shield && pr.kind !== 'shock') {
+      } else if (p.blocking && fromFront && p.armor.bedrock.shield && !['shock', 'strike', 'blast'].includes(pr.kind)) {
         // The bedrock shield bounces things back as magic that hits monsters
         pr.gone = true;
         Sound.play('block');
@@ -368,33 +439,60 @@ class World {
     this.projectiles = this.projectiles.filter((pr) => !pr.gone);
   }
 
-  // Fireballs from the fire wand
+  // Magic from the wands (and the baby dragon's little fireballs)
   updateShots(dt) {
     const p = this.player;
     for (const s of this.shots) {
       s.life -= dt;
+      if (s.g) s.vy += s.g * dt;
+      if (s.homing) {
+        // Galaxy stars turn toward the closest monster
+        let best = null, bestD = 400;
+        for (const e of this.enemies) {
+          if (e.dead || e === s.skip || (e.isBoss && !this.bossActive)) continue;
+          const d = Math.hypot(e.cx - s.x, e.cy - s.y);
+          if (d < bestD) { best = e; bestD = d; }
+        }
+        if (best) {
+          const sp = Math.max(380, Math.hypot(s.vx, s.vy));
+          const dx = best.cx - (s.x + s.w / 2), dy = best.cy - (s.y + s.h / 2);
+          const len = Math.hypot(dx, dy) || 1;
+          const turn = Math.min(1, dt * 6);
+          s.vx += (dx / len * sp - s.vx) * turn;
+          s.vy += (dy / len * sp - s.vy) * turn;
+        }
+      }
       s.x += s.vx * dt;
       s.y += s.vy * dt;
       s.spin += dt * 14;
       const mx = s.x + s.w / 2, my = s.y + s.h / 2;
       const colors = ELEMENTS[s.el || 'fire'].colors;
       if (Math.random() < 0.6) this.burst(mx, my, 1, colors, 40, 5, 0, 0.3);
-      if (s.life <= 0 || isSolid(this.tile(Math.floor(mx / T), Math.floor(my / T)))) {
+      const t = this.tile(Math.floor(mx / T), Math.floor(my / T));
+      if (s.life <= 0 || isSolid(t) || (s.rock && isOneWay(t) && s.vy > 0) || my > ROWS * T) {
         s.gone = true;
-        this.burst(mx, my, 6, colors, 100, 5, 0, 0.4);
+        this.burst(mx, my, s.rock ? 12 : 6, colors, s.rock ? 180 : 100, 5, s.rock ? 400 : 0, 0.4);
+        if (s.rock) Sound.play('rock');
         continue;
       }
       for (const e of this.enemies) {
-        if (!e.dead && overlap(s, e)) {
+        if (e.dead || !overlap(s, e)) continue;
+        if (s.pierce) {
+          // the air wand blows through: hit each monster once
+          if (s.hits.includes(e)) continue;
+          s.hits.push(e);
           p.strike(e, s.dmg, s.dir, s.kb, s.el);
-          this.burst(mx, my, 8, colors, 140, 6, 0, 0.4);
-          s.gone = true;
-          break;
+          continue;
         }
+        p.strike(e, s.dmg, s.dir, s.kb, s.el);
+        this.burst(mx, my, 8, colors, 140, 6, 0, 0.4);
+        if (s.rock) { this.shake = Math.max(this.shake, 0.12); Sound.play('rock'); }
+        s.gone = true;
+        break;
       }
       // Fireballs knock bones, webs and dragon breath out of the air
       for (const pr of this.projectiles) {
-        if (s.gone || pr.gone || !overlap(s, pr)) continue;
+        if (s.gone || pr.gone || pr.kind === 'strike' || pr.kind === 'blast' || !overlap(s, pr)) continue;
         pr.gone = true;
         s.gone = true;
         this.burst(mx, my, 8, colors, 140, 6, 0, 0.4);
@@ -419,10 +517,12 @@ class World {
       }
       if (p.dead) continue;
       // Magnet Potion: coins and gems fly to Blockie
-      if (p.magnet > 0 && (it.type === 'coin' || GEMS[it.type])) {
+      // (the kitty pulls in coins and gems that are close)
+      const kitty = this.pet && this.pet.type === 'kitty';
+      if ((p.magnet > 0 || kitty) && (it.type === 'coin' || GEMS[it.type])) {
         const dx = p.cx - it.x, dy = p.cy - it.y;
         const d = Math.hypot(dx, dy);
-        if (d < 300 && d > 1) {
+        if (d < (p.magnet > 0 ? 300 : 170) && d > 1) {
           const step = Math.min(d, 480 * dt);
           it.x += dx / d * step;
           it.y += dy / d * step;
@@ -452,6 +552,12 @@ class World {
       it.taken = true;
       Sound.play('gem');
       this.addGem(it.x, it.y, GEMS[type].value, type);
+    } else if (type === 'bomb' || type === 'bombs') {
+      it.taken = true;
+      p.bombs += type === 'bombs' ? 3 : 1;
+      Sound.play('select');
+      this.popup(type === 'bombs' ? '+3 bombs' : '+1 bomb', it.x, it.y - 20, '#ffe14d');
+      if (!this.bombTold) { this.bombTold = true; this.say(PICKUP_TEXT[type]); }
     } else if (FOOD.includes(type)) {
       it.taken = true;
       Sound.play('food');
@@ -483,7 +589,7 @@ class World {
       Save.data.weapon = type;
       Save.write();
       Sound.play('select');
-      this.say(PICKUP_TEXT[type]);
+      this.say(WANDS[type] ? WANDS[type].tip : PICKUP_TEXT[type]);
       // Drop the old weapon here so Blockie can swap back
       if (old !== 'none' && old !== type) {
         it.type = old;
@@ -589,7 +695,9 @@ class World {
       sy = (Math.random() - 0.5) * 10;
     }
     const cam = Math.round(this.camX);
+    if (modOn('disco')) ctx.filter = `hue-rotate(${Math.round(this.time * 90) % 360}deg)`;
     drawBackdrop(ctx, th, this.camX, this.time);
+    ctx.filter = 'none';
 
     ctx.save();
     ctx.translate(-cam + sx, sy);
@@ -627,6 +735,13 @@ class World {
         }
       }
     }
+    for (const b of this.bombs) {
+      ctx.save();
+      ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+      drawBomb(ctx, b.spin, b.fuse < 0.4 && Math.floor(b.fuse * 20) % 2 === 0);
+      ctx.restore();
+    }
+    if (this.pet) this.pet.draw(ctx);
     this.player.draw(ctx);
     this.chasers.forEach((ch, i) => {
       if (this.def.chaser === 'dino') {
@@ -639,7 +754,7 @@ class World {
     for (const s of this.shots) {
       ctx.save();
       ctx.translate(s.x + s.w / 2, s.y + s.h / 2);
-      drawFireball(ctx, s.el, s.spin);
+      drawShot(ctx, s);
       ctx.restore();
     }
     for (const b of this.bolts) this.drawBolt(ctx, b);
@@ -728,6 +843,18 @@ class World {
       drawPotion(ctx, it.type, x, y, 1.2);
     } else if (FOOD.includes(it.type)) {
       drawFood(ctx, it.type, x, y, 1.2);
+    } else if (it.type === 'bomb' || it.type === 'bombs') {
+      ctx.fillStyle = 'rgba(255,200,80,0.35)';
+      ctx.beginPath();
+      ctx.arc(x, y, 20 + Math.sin(this.time * 5) * 2, 0, Math.PI * 2);
+      ctx.fill();
+      if (it.type === 'bombs') {
+        ctx.save(); ctx.translate(x - 9, y + 3); ctx.scale(0.8, 0.8); drawBomb(ctx, 0); ctx.restore();
+        ctx.save(); ctx.translate(x + 9, y + 3); ctx.scale(0.8, 0.8); drawBomb(ctx, 0); ctx.restore();
+        ctx.save(); ctx.translate(x, y - 8); ctx.scale(0.8, 0.8); drawBomb(ctx, 0); ctx.restore();
+      } else {
+        ctx.save(); ctx.translate(x, y); drawBomb(ctx, 0); ctx.restore();
+      }
     } else if (BEDROCK[it.type]) {
       ctx.fillStyle = 'rgba(127,214,255,0.4)';
       ctx.beginPath();
@@ -743,7 +870,7 @@ class World {
         ctx.save();
         ctx.translate(x - 4, y + 14);
         ctx.rotate(0.5);
-        const s = it.type === 'spear' ? 0.55 : it.type === 'firewand' ? 0.75 : 0.85;
+        const s = it.type === 'spear' ? 0.55 : WANDS[it.type] ? 0.75 : 0.85;
         ctx.scale(s, s);
         drawWeapon(ctx, it.type);
         ctx.restore();
@@ -798,6 +925,37 @@ class World {
       box(ctx, 6, -4, 5, 8, '#f2f0e6');
     } else if (pr.kind === 'breath') {
       drawFireball(ctx, pr.el, pr.spin, 1.1);
+      if (pr.el === 'galaxy') drawStar(ctx, 0, 0, 8, '#ffffff');
+    } else if (pr.kind === 'meteor') {
+      ctx.rotate(pr.spin * 0.4);
+      const [main, light, dark] = ELEMENTS.galaxy.colors;
+      box(ctx, -13, -10, 26, 20, dark);
+      box(ctx, -10, -13, 20, 26, dark);
+      box(ctx, -8, -8, 16, 16, main);
+      box(ctx, -5, -6, 5, 5, light);
+    } else if (pr.kind === 'ebomb') {
+      drawBomb(ctx, pr.spin * 0.5, Math.floor(this.time * 12) % 2 === 0);
+    } else if (pr.kind === 'blast') {
+      // just the flash; the sparks are particles
+    } else if (pr.kind === 'strike') {
+      // a lightning strike from the sky: a warning glow first, then the flash
+      ctx.translate(-pr.w / 2, -pr.h / 2);
+      if (pr.wait > 0) {
+        const a = 0.25 + 0.25 * Math.sin(this.time * 30);
+        box(ctx, 2, 0, pr.w - 4, pr.h, `rgba(255,225,77,${a * 0.5})`);
+        box(ctx, -6, pr.h - 8, pr.w + 12, 8, `rgba(255,225,77,${a + 0.3})`);
+      } else {
+        let x = pr.w / 2;
+        ctx.strokeStyle = '#ffe14d';
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        for (let yy = 40; yy <= pr.h; yy += 40) { x = pr.w / 2 + (Math.random() - 0.5) * 26; ctx.lineTo(x, yy); }
+        ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+      }
     } else {
       ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.lineWidth = 2;
@@ -869,7 +1027,7 @@ class World {
       ctx.save();
       ctx.translate(30, 88);
       ctx.rotate(0.75);
-      const s = p.weapon === 'spear' ? 0.55 : p.weapon === 'firewand' ? 0.7 : 0.8;
+      const s = p.weapon === 'spear' ? 0.55 : WANDS[p.weapon] ? 0.7 : 0.8;
       ctx.scale(s, s);
       drawWeapon(ctx, p.weapon);
       ctx.restore();
@@ -887,6 +1045,13 @@ class World {
       ax += 32;
     }
     for (let i = 0; i < p.armor.extra; i++) { drawArmorIcon(ctx, 'extra', ax, 73, 1); ax += 32; }
+    // bombs
+    ax += 6;
+    ctx.save();
+    ctx.translate(ax, 75);
+    drawBomb(ctx, 0);
+    ctx.restore();
+    say(ctx, modOn('bombs') ? '∞' : String(p.bombs), ax + 16, 75, 20, '#ffe14d', 'left');
     this.drawEffects(ctx);
 
     // points and gems

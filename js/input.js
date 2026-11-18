@@ -1,4 +1,4 @@
-// Keyboard input. Only arrows, Space, Enter, P and Esc are used.
+// Keyboard input. Only arrows, Space, B/X, Enter, P and Esc are used.
 
 const Input = {
   down: {},      // keys being held right now
@@ -10,6 +10,8 @@ const Input = {
     ArrowUp: 'up',
     ArrowDown: 'down',
     Space: 'attack',
+    KeyB: 'bomb',
+    KeyX: 'bomb',
     Enter: 'enter',
     NumpadEnter: 'enter',
     KeyP: 'pause',

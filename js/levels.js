@@ -1,4 +1,4 @@
-// The eight levels of the Blockie Forest, plus the bonus rounds.
+// The eleven levels of the Blockie Forest, plus the bonus rounds.
 //
 // Levels are built with simple helper calls. The map is 15 tiles tall:
 // row 0 is the top of the screen and row 14 is the bottom.
@@ -280,6 +280,7 @@ const LEVELS = [
 
       // gap at 101-102
       b.ground(103, 175);
+      b.item('icewand', 105);
       b.enemy('zombie', 107);
       b.mushroom(110, 9, 3);
       b.item('apple', 111, 8);
@@ -335,6 +336,7 @@ const LEVELS = [
       // gap at 65-67
       b.ground(68, 104);
       b.item('firewand', 70);
+      b.item('bombs', 72);
       b.sign(73, 'Fire Wand: SPACE = fire!');
       b.enemy('spider', 75);
       b.mob(78, 4);
@@ -425,6 +427,7 @@ const LEVELS = [
 
       // gap at 105-107
       b.ground(108, 175);
+      b.item('zapwand', 110);
       b.animal('horse', 108, 120);
       b.enemy('skeleton', 112);
       b.coins(114, 10, 3);
@@ -466,6 +469,7 @@ const LEVELS = [
       b.ground(30, 60, BR);
       b.checkpoint(31);
       b.item('zaporb', 34);
+      b.item('bombs', 36);
       b.mob(38, 5);
       b.block(44, 10, 2, 2, BR);
       b.block(46, 8, 2, 4, BR);
@@ -583,6 +587,7 @@ const LEVELS = [
 
       // gap at 113-115
       b.ground(116, 189);
+      b.item('windwand', 117);
       b.dino(120, 'zap');
       b.item('bedhelmet', 123);
       b.coins(125, 10, 4);
@@ -672,7 +677,7 @@ const LEVELS = [
     signName: 'Bedrock\nDeep',
     target: 225,
     theme: 'deep',
-    bonus: null,
+    bonus: 'gemrain',
     bossName: 'The Bedrock Golem',
     width: 214,
     build(b) {
@@ -720,6 +725,7 @@ const LEVELS = [
       // lava at 107-109
       b.ground(110, 146, R);
       b.item('zaporb', 112);
+      b.item('earthwand', 114);
       b.enemy('spider', 115, { drop: true });
       b.dino(119, 'zap');
       b.item('bedchest', 122);
@@ -741,6 +747,230 @@ const LEVELS = [
       b.item('apple', 175);
       b.item('magnetpot', 176);
       b.boss('golem', 178, 196);
+      b.flag(209);
+    }
+  },
+
+  // ---------------- Level 9 ----------------
+  {
+    name: 'Storm Castle',
+    signName: 'Storm\nCastle',
+    target: 250,
+    theme: 'storm',
+    bonus: 'gemrain',
+    bossName: 'The Storm King',
+    width: 200,
+    build(b) {
+      const BR = TILE.BRICK;
+      b.ground(0, 30, BR);
+      b.sign(3, 'Storm Castle!');
+      b.item('zapwand', 6);
+      b.sign(9, 'B = throw a bomb!');
+      b.item('bombs', 11);
+      b.enemy('bomber', 16);
+      b.coins(19, 10, 4);
+      b.dragon(22, 'zap');
+      b.dino(26, 'wind');
+      b.item('apple', 29);
+
+      // gap at 31-33
+      b.ground(34, 70, BR);
+      b.checkpoint(35);
+      b.item('windwand', 39);
+      b.enemy('bomber', 43);
+      b.block(46, 10, 2, 2, BR);
+      b.block(48, 8, 2, 4, BR);
+      b.item('ruby', 48, 7);
+      b.item('diamond', 49, 7);
+      b.dino(53, 'zap');
+      b.dragon(56, 'wind');
+      b.mob(59, 4);
+      b.item('bomb', 63);
+      b.enemy('robot', 66);
+      b.item('bread', 69);
+
+      // gap at 71-73 with a stepping stone
+      b.block(72, 10, 1, 1, BR);
+      b.ground(74, 112, BR);
+      b.enemy('bomber', 78);
+      b.item('zaporb', 80);
+      b.checkpoint(84);
+      b.plat(88, 9, 4);
+      b.coins(88, 8, 4, 'gem');
+      b.plat(93, 7, 3);
+      b.item('emerald', 94, 6);
+      b.dino(97, 'wind');
+      b.enemy('skeleton', 101);
+      b.dragon(104, 'zap');
+      b.item('starpot', 107);
+      b.enemy('bomber', 110);
+
+      // gap at 113-115
+      b.ground(116, 199, BR);
+      b.item('healpot', 118);
+      b.mob(121, 5);
+      b.dino(126, 'zap');
+      b.item('bombs', 129);
+      b.coins(131, 10, 4);
+      b.enemy('bomber', 136);
+      b.dragon(139, 'wind');
+      b.coins(142, 10, 3, 'emerald');
+      b.dino(146, 'wind');
+      b.checkpoint(152);
+      b.item('apple', 156);
+      b.item('jumppot', 158);
+      b.boss('stormking', 160, 178);
+      b.flag(195);
+    }
+  },
+
+  // ---------------- Level 10 ----------------
+  {
+    name: 'Lava Keep',
+    signName: 'Lava\nKeep',
+    target: 275,
+    theme: 'lavakeep',
+    bonus: 'stampede',
+    bossName: 'The Elemental Dragon',
+    width: 200,
+    build(b) {
+      const BR = TILE.BRICK;
+      b.ground(0, 28, BR);
+      b.sign(3, 'Lava Keep!');
+      b.item('icewand', 6);
+      b.sign(9, 'Ice Wand: freeze them!');
+      b.coins(12, 10, 4);
+      b.dino(16, 'fire');
+      b.enemy('bomber', 21);
+      b.plat(23, 9, 3);
+      b.item('ruby', 24, 8);
+      b.item('apple', 27);
+
+      // lava at 29-31
+      b.ground(32, 68, BR);
+      b.checkpoint(33);
+      b.item('earthwand', 37);
+      b.dragon(40, 'fire');
+      b.dino(43, 'ice');
+      b.item('bombs', 46);
+      b.block(49, 10, 2, 2, BR);
+      b.block(51, 8, 2, 4, BR);
+      b.item('diamond', 51, 7);
+      b.item('gem', 52, 7);
+      b.enemy('bomber', 56);
+      b.dragon(60, 'earth');
+      b.mob(62, 4);
+      b.item('bread', 67);
+
+      // lava at 69-71 with a stepping stone
+      b.block(70, 10, 1, 1, BR);
+      b.ground(72, 110, BR);
+      b.item('fireorb', 74);
+      b.dino(78, 'fire');
+      b.enemy('robot', 82);
+      b.checkpoint(86);
+      b.item('bedshield', 89);
+      b.dragon(92, 'ice');
+      b.plat(94, 9, 4);
+      b.coins(94, 8, 4, 'gem');
+      b.enemy('bomber', 100);
+      b.dino(104, 'zap');
+      b.item('healpot', 108);
+
+      // lava at 111-113
+      b.ground(114, 199, BR);
+      b.item('earthorb', 116);
+      b.mob(119, 5);
+      b.dino(124, 'fire');
+      b.dragon(128, 'earth');
+      b.coins(130, 10, 4);
+      b.enemy('bomber', 134);
+      b.item('bomb', 137);
+      b.dino(140, 'ice');
+      b.coins(143, 10, 3, 'ruby');
+      b.checkpoint(150);
+      b.item('apple', 154);
+      b.item('starpot', 156);
+      b.boss('elemdragon', 160, 178);
+      b.flag(195);
+    }
+  },
+
+  // ---------------- Level 11 ----------------
+  {
+    name: 'Galaxy Tower',
+    signName: 'Galaxy\nTower',
+    target: 300,
+    theme: 'galaxy',
+    bonus: null,
+    bossName: 'The Galaxy Wizard',
+    width: 214,
+    build(b) {
+      const BR = TILE.BRICK;
+      b.ground(0, 30, BR);
+      b.sign(3, 'To the stars!');
+      b.item('galaxywand', 7);
+      b.sign(10, 'Galaxy Wand: stars chase!');
+      b.coins(13, 10, 4, 'gem');
+      b.dino(18, 'zap');
+      b.dragon(22, 'galaxy');
+      b.enemy('bomber', 26);
+      b.item('apple', 29);
+
+      // gap at 31-33
+      b.ground(34, 70, BR);
+      b.checkpoint(35);
+      b.item('bombs', 38);
+      b.dino(42, 'ice');
+      b.plat(45, 9, 3);
+      b.plat(49, 7, 3);
+      b.item('diamond', 50, 6);
+      b.item('galaxyorb', 52);
+      b.dragon(55, 'galaxy');
+      b.mob(58, 5);
+      b.enemy('robot', 63);
+      b.dino(67, 'wind');
+
+      // gap at 71-73
+      b.ground(74, 112, BR);
+      b.item('bread', 76);
+      b.enemy('bomber', 79);
+      b.dino(83, 'fire');
+      b.checkpoint(87);
+      b.item('bedhelmet', 90);
+      b.block(93, 10, 2, 2, BR);
+      b.block(95, 8, 2, 4, BR);
+      b.coins(95, 7, 2, 'ruby');
+      b.dragon(99, 'zap');
+      b.enemy('skeleton', 102);
+      b.item('magnetpot', 105);
+      b.dino(108, 'zap');
+
+      // gap at 113-115 with a stepping stone
+      b.block(114, 10, 1, 1, BR);
+      b.ground(116, 150, BR);
+      b.item('healpot', 118);
+      b.enemy('bomber', 121);
+      b.dragon(125, 'galaxy');
+      b.mob(128, 5);
+      b.item('bedchest', 132);
+      b.dino(136, 'ice');
+      b.coins(139, 10, 4, 'emerald');
+      b.enemy('robot', 144);
+      b.item('bomb', 148);
+
+      // gap at 151-153
+      b.ground(154, 213, BR);
+      b.checkpoint(155);
+      b.item('starpot', 158);
+      b.dino(161, 'fire');
+      b.enemy('bomber', 164);
+      b.dragon(167, 'galaxy');
+      b.coins(169, 10, 3, 'diamond');
+      b.checkpoint(172);
+      b.item('apple', 175);
+      b.item('healpot', 176);
+      b.boss('wizard', 178, 196);
       b.flag(209);
     }
   }

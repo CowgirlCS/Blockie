@@ -1,7 +1,7 @@
 # Blockie
 
 A blocky side-scrolling adventure for young players. Help Blockie, a little red knight,
-collect points and beat the 8 bosses of the Blockie Forest!
+collect points and beat the 11 bosses of the Blockie Forest!
 
 ## How to play
 
@@ -14,6 +14,7 @@ No internet and no installing needed.
 | ↑           | Jump                                |
 | Space       | Swing your weapon                   |
 | ↓           | Block with the shield (if you have one) |
+| B or X      | Throw a bomb                        |
 | P or Esc    | Pause                               |
 | Enter       | Pick in menus                       |
 
@@ -40,12 +41,30 @@ No internet and no installing needed.
   Spend them in the **Castle Shop** on upgrades.
 - **Dragons** fly around and breathe fire (ouch!) or ice (brrr, it slows you down).
   Beat one and it drops a power orb.
-- The **Fire Wand** shoots fireballs that fly at the nearest monster. Great for dragons!
+- **Wands** shoot magic at the nearest monster. Great for dragons!
+  - **Fire Wand**: fireballs (they turn into your elemental power if you have one)
+  - **Ice Wand**: freezes monsters in a block of ice
+  - **Earth Wand**: throws big rocks that bonk hard
+  - **Lightning Wand**: super fast zaps that jump to a second monster
+  - **Air Wand**: a gust that blows right through every monster in the way
+  - **Galaxy Wand**: stars that chase monsters and pop out more stars
+- **Bombs**: press **B** to throw one. It goes BOOM and hurts every monster close by
+  (never Blockie). You start every level with 3. Find more, or buy a **Bomb Bag** in the shop.
+  Watch out for **bomb goblins** in the castles: their bombs DO hurt!
+- **Pets**: adopt one at the **Pet House** (top of the map) with gems. Your pet follows you:
+  - **Puppy**: bites monsters
+  - **Kitty**: grabs coins and gems that are close
+  - **Bunny**: digs up presents
+  - **Baby Dragon**: flies next to you and shoots fire
+- **Mods**: turn them on and off in the **Mods** menu (top of the map): Moon Jump, Big Head,
+  Rainbow Blockie, Endless Bombs, Super Speed, Disco Sky, Party Monsters and Castle Sky.
 - **Power orbs** give you an elemental power for 25 seconds:
   - **Fire** (red): hits do extra damage
   - **Ice** (blue): hits freeze monsters in a block of ice
   - **Lightning** (yellow): hits zap a second monster too
   - **Wind** (green): press ↑ again in the air for a double jump
+  - **Earth** (brown): hits knock monsters far
+  - **Galaxy** (purple): hits make shooting stars
 - **Potions**:
   - **Heart** (red): +2 hearts
   - **Jump** (blue): super high jumps
@@ -66,8 +85,16 @@ No internet and no installing needed.
    Boss: Rex the Dino King, who uses a new element every attack and charges across the room
 7. **Frozen Peaks** - snow, ice dinos and ice dragons. Boss: The Big Yeti (snowballs and falling icicles)
 8. **Bedrock Deep** - a dark cave with lava pits. Boss: The Bedrock Golem (boulders, ground slams and rock rain)
+9. **Storm Castle** - a castle in the storm clouds with bomb goblins. Lightning and Air wands are here!
+   Boss: The Storm King (lightning strikes from the sky, zap bolts and wind). Watch for the yellow glow!
+10. **Lava Keep** - a castle over lava. Ice and Earth wands are here!
+   Boss: The Elemental Dragon (fire, ice, lightning and earth, one after the other)
+11. **Galaxy Tower** - a tower out in space. The Galaxy Wand is here!
+   Boss: The Galaxy Wizard (teleports, shoots stars, calls meteors and monsters of every element)
 
-After levels 1 to 7 there is a bonus round (Gem Rain, Spider Chase or Dino Stampede).
+The flying bosses swoop down low now and then. That's your chance to hit them with a sword!
+
+After levels 1 to 10 there is a bonus round (Gem Rain, Spider Chase or Dino Stampede).
 
 **Bosses get ANGRY** at half health: they glow red, move faster and use new attacks,
 like ground waves you have to jump over, extra webs and bones, or calling helpers.
@@ -78,9 +105,11 @@ Bosses have a little less health in Easy mode.
 Plain HTML, CSS and JavaScript. No libraries, no build step.
 
 - `js/levels.js` - the level maps (easy to edit: each level is a list of simple calls)
-- `js/items.js` - gems, potions and elemental powers (names, colors, how long they last)
+- `js/items.js` - gems, potions, elemental powers, wands, pets and mods
 - `js/entities.js` - Blockie, monsters, dragons, dinos, the friendly animals
-- `js/bosses.js` - the eight bosses
+- `js/bosses.js` - the eleven bosses
+- `js/pets.js` - the pets
+- `js/extras.js` - the Pet House and Mods menus
 - `js/world.js` - playing a level, the camera and the HUD
 - `js/screens.js` - menus, shop, win and game-over screens
 - `js/draw.js` - all the drawing (everything is made of rectangles)

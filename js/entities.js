@@ -10,8 +10,13 @@ const WEAPONS = {
   spear: { name: 'Spear',      dmg: 1, reach: 86, h: 16, oy: 10,  back: 0,  cool: 0.38, swing: 0.22, kb: 140 },
   axe:   { name: 'Battle Axe', dmg: 3, reach: 56, h: 66, oy: -26, back: 16, cool: 0.62, swing: 0.32, kb: 240 },
   mace:  { name: 'Mace',       dmg: 2, reach: 46, h: 36, oy: -2,  back: 0,  cool: 0.50, swing: 0.28, kb: 560 },
-  // The fire wand shoots fireballs instead of hitting up close.
-  firewand: { name: 'Fire Wand', dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.35, swing: 0.18, kb: 160, shoots: true }
+  // Wands shoot magic instead of hitting up close.
+  firewand:   { name: 'Fire Wand',      dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.35, swing: 0.18, kb: 160, shoots: true },
+  icewand:    { name: 'Ice Wand',       dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.40, swing: 0.18, kb: 100, shoots: true },
+  earthwand:  { name: 'Earth Wand',     dmg: 3, reach: 0, h: 0, oy: 0, back: 0, cool: 0.60, swing: 0.22, kb: 420, shoots: true },
+  zapwand:    { name: 'Lightning Wand', dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.30, swing: 0.15, kb: 120, shoots: true },
+  windwand:   { name: 'Air Wand',       dmg: 1, reach: 0, h: 0, oy: 0, back: 0, cool: 0.45, swing: 0.20, kb: 600, shoots: true },
+  galaxywand: { name: 'Galaxy Wand',    dmg: 2, reach: 0, h: 0, oy: 0, back: 0, cool: 0.55, swing: 0.20, kb: 200, shoots: true }
 };
 
 // Bedrock armor is extra tough: each piece blocks this many hits.
@@ -79,7 +84,26 @@ class Player {
     if (bed >= 1) this.wear('shield', true);
     if (bed >= 2) this.wear('helmet', true);
     if (bed >= 3) this.wear('chest', true);
+    this.bombs = BOMB_START + 2 * (Save.data.upgrades.bombs || 0);
     this.respawn(x, feetY);
+  }
+
+  // Throw a bomb in a little arc. It goes BOOM a moment later.
+  throwBomb() {
+    const w = this.world;
+    if (!modOn('bombs')) {
+      if (this.bombs <= 0) {
+        w.popup('No bombs!', this.cx, this.y - 20, '#ffffff');
+        Sound.play('nope');
+        return;
+      }
+      this.bombs--;
+    }
+    w.bombs.push({
+      x: this.cx - 10 + this.facing * 10, y: this.y + 4, w: 20, h: 20,
+      vx: this.facing * 300 + this.vx * 0.4, vy: -420, fuse: 1.3, spin: 0, onGround: false
+    });
+    Sound.play('throw');
   }
 
   respawn(x, feetY) {
@@ -136,6 +160,7 @@ class Player {
     if (this.boost > 0) s *= 1.35;
     if (this.webbed > 0) s *= 0.45;
     if (this.chilled > 0) s *= 0.5;
+    if (modOn('fast')) s *= 1.6;
     return s;
   }
 
@@ -222,7 +247,9 @@ class Player {
     if (!Input.held('up') && this.vy < -260) this.vy = -260;   // let go early = smaller jump
     if (frozen && this.onGround) this.vy = -380;                // happy hops at the flag
 
-    this.vy = Math.min(MAX_FALL, this.vy + GRAVITY * dt);
+    // Moon Jump mod: less gravity, so Blockie floats
+    const moon = modOn('moon');
+    this.vy = Math.min(moon ? MAX_FALL * 0.55 : MAX_FALL, this.vy + GRAVITY * (moon ? 0.45 : 1) * dt);
 
     // Riding a big animal moves Blockie along with it
     if (this.riding) this.x += this.riding.dx;
@@ -253,6 +280,7 @@ class Player {
       else Sound.play(this.weapon === 'none' ? 'punch' : 'swing');
     }
     if (this.attackT > 0) this.doHits();
+    if (!frozen && Input.hit('bomb')) this.throwBomb();
 
     if (this.onGround && Math.abs(this.vx) > 10) this.walkT += Math.abs(this.vx) * dt;
     if (this.y > ROWS * T + 40) this.fallInPit();
@@ -264,25 +292,47 @@ class Player {
     return { x, y: this.y + wp.oy, w: wp.reach + wp.back, h: wp.h };
   }
 
-  // The fire wand: send a fireball flying. With an elemental power it becomes that element.
+  // A wand: send magic flying. The fire wand turns into your elemental power if you have one.
   shoot(wp) {
+    const wand = WANDS[this.weapon];
+    const el = wand.el || this.power;
+    const speed = { zap: 900, earth: 430, wind: 480, galaxy: 460 }[el] || 560;
     const sx = this.cx + this.facing * 18, sy = this.y + 17;
     // Help aim: fly toward the closest monster in front, even one up in the air
-    let vx = this.facing * 560, vy = 0, bestD = 520;
+    let vx = this.facing * speed, vy = 0, bestD = 520;
     for (const e of this.world.enemies) {
       const dx = (e.cx - sx) * this.facing, dy = e.cy - sy;
       if (e.dead || dx < 0 || dx > bestD || Math.abs(dy) > dx * 0.8 + 30) continue;
       bestD = dx;
       const len = Math.hypot(dx, dy) || 1;
-      vx = this.facing * 560 * dx / len;
-      vy = 560 * dy / len;
+      vx = this.facing * speed * dx / len;
+      vy = speed * dy / len;
     }
-    this.world.shots.push({
+    const shot = {
       x: sx - 9, y: sy - 9, w: 18, h: 18,
-      vx, vy, dir: this.facing, el: this.power,
+      vx, vy, dir: this.facing, el,
       dmg: wp.dmg + Save.data.upgrades.power, kb: wp.kb, life: 1.1, spin: 0
-    });
-    Sound.play('fireball');
+    };
+    if (el === 'earth' && wand.el) {
+      // a big rock that flies in an arc
+      Object.assign(shot, { x: sx - 13, y: sy - 13, w: 26, h: 26, vy: vy - 260, g: 900, life: 1.6, rock: true });
+      Sound.play('rock');
+    } else if (el === 'wind' && wand.el) {
+      // a big gust that blows through every monster in the way
+      Object.assign(shot, { y: sy - 22, w: 30, h: 44, life: 0.9, pierce: true, hits: [], gust: true });
+      Sound.play('swing');
+    } else if (el === 'galaxy' && wand.el) {
+      shot.homing = true;
+      shot.life = 1.8;
+      Sound.play('star');
+    } else if (el === 'zap' && wand.el) {
+      Sound.play('zap');
+    } else if (el === 'ice' && wand.el) {
+      Sound.play('freeze');
+    } else {
+      Sound.play('fireball');
+    }
+    this.world.shots.push(shot);
   }
 
   // Hit a monster, adding the magic of an elemental power.
@@ -290,7 +340,16 @@ class Player {
     const w = this.world;
     if (el === 'fire') dmg += 1;
     if (el === 'wind') kb *= 1.8;
+    if (el === 'earth') kb *= 1.5;
     if (!e.damage(dmg, dir, kb)) return;
+    if (el === 'earth') w.shake = Math.max(w.shake, 0.1);
+    if (el === 'galaxy' && !e.isBoss && Math.random() < 0.5) {
+      // a little shooting star pops out and flies at another monster
+      w.shots.push({
+        x: e.cx - 7, y: e.y - 10, w: 14, h: 14, vx: -dir * 120, vy: -300, dir: -dir, el: 'galaxy',
+        dmg: 1, kb: 120, life: 1.4, spin: 0, homing: true, small: true, skip: e
+      });
+    }
     if (el) w.burst(e.cx, e.cy, 10, ELEMENTS[el].colors, 170, 6, 0, 0.5);
     if (el === 'ice' && !e.dead) e.freeze(e.isBoss ? 1.2 : 3);
     if (el === 'zap') {
@@ -438,7 +497,9 @@ class Player {
       spin: this.dead ? this.deadT * 9 : 0,
       boost: this.boost > 0,
       webbed: this.webbed > 0,
-      chilled: this.chilled > 0
+      chilled: this.chilled > 0,
+      bighead: modOn('bighead'),
+      rainbow: modOn('rainbow') ? this.world.time : null
     });
   }
 }
@@ -575,6 +636,10 @@ class Enemy {
     if (this.dead) return;
     this.dead = true;
     this.world.poof(this.cx, this.cy, this.isBoss);
+    if (modOn('confetti')) {
+      this.world.burst(this.cx, this.cy, this.isBoss ? 60 : 24,
+        ['#d7262e', '#ffcc22', '#ffffff', '#5fe6ff', '#7ee08a', '#ff7ad8'], 300, 7, 400, 1.2);
+    }
     this.world.addPoints(this.points, this.cx, this.y);
     Sound.play('defeat');
   }
@@ -923,6 +988,44 @@ class Dino extends Enemy {
   }
 }
 
+// A little castle goblin that throws bombs. Bombs go BOOM when they land, so keep away!
+class Bomber extends Enemy {
+  constructor(world, x, feetY) {
+    super(world, 'bomber', x, feetY, 24, 32, 2, 10);
+    this.throwT = 1.5 + Math.random() * 2;
+    this.windup = 0;
+  }
+
+  think(dt) {
+    const p = this.world.player;
+    const dx = p.cx - this.cx;
+    this.throwT -= dt;
+    if (this.windup > 0) {
+      this.vx = 0;
+      this.windup -= dt;
+      if (this.windup <= 0) {
+        const vx = Math.max(-320, Math.min(320, dx / 1.0));
+        this.world.projectiles.push({
+          kind: 'ebomb', x: this.cx - 9, y: this.y - 4, w: 18, h: 18, vx, vy: -520, g: 1000, life: 3, spin: 0
+        });
+        Sound.play('throw');
+      }
+      return;
+    }
+    if (this.throwT <= 0 && !p.dead && Math.abs(dx) < 420 && Math.abs(p.cy - this.cy) < 160) {
+      this.dir = dx < 0 ? -1 : 1;
+      this.windup = 0.6;
+      this.throwT = 2.8 + Math.random() * 1.2;
+      return;
+    }
+    this.patrol(40);
+  }
+
+  draw(ctx) {
+    drawBomber(ctx, this.cx, this.y + this.h, this.dir, 1, this.t, this.flash > 0, { windup: this.windup > 0 });
+  }
+}
+
 function makeEnemy(world, e) {
   const x = (e.c + 0.5) * T;
   const y = e.r * T;
@@ -934,6 +1037,7 @@ function makeEnemy(world, e) {
     case 'mob': return new Mob(world, x, y, e.opts);
     case 'robot': return new Robot(world, x, y);
     case 'dino': return new Dino(world, x, y, e.opts);
+    case 'bomber': return new Bomber(world, x, y);
   }
   throw new Error('Unknown enemy: ' + e.type);
 }

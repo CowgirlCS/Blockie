@@ -11,7 +11,10 @@ const Save = {
       unlocked: 1,             // how many levels are open
       gems: 0,
       weapon: 'none',          // the weapon Blockie is holding
-      upgrades: { power: 0, speed: 0, jump: 0, armor: 0, bedrock: 0, points: 0, heart: 0 },
+      upgrades: { power: 0, speed: 0, jump: 0, armor: 0, bedrock: 0, points: 0, heart: 0, bombs: 0 },
+      pets: [],                // pets Blockie has adopted
+      pet: null,               // the pet that follows Blockie
+      mods: {},                // mods that are turned on
       levelBest: LEVELS.map(() => 0),
       bonusBest: LEVELS.slice(1).map(() => 0),
       beaten: LEVELS.map(() => false),
@@ -28,6 +31,8 @@ const Save = {
         const fresh = this.fresh();
         Object.assign(this.data, saved);
         this.data.upgrades = Object.assign(fresh.upgrades, saved.upgrades);
+        if (!Array.isArray(this.data.pets)) this.data.pets = [];
+        if (!this.data.mods || typeof this.data.mods !== 'object') this.data.mods = {};
         // Older saves had fewer levels: fill in the new ones
         for (const k of ['levelBest', 'bonusBest', 'beaten']) {
           const old = Array.isArray(saved[k]) ? saved[k] : [];
